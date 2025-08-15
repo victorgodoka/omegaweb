@@ -18,6 +18,10 @@ export default defineConfig({
     }
   },
   build: {
+    commonjsOptions: {
+      // Ensure CJS default export interoperability (fixes packages like hoist-non-react-statics)
+      requireReturnsDefault: 'auto'
+    },
     rollupOptions: {
       output: {
         manualChunks: {
@@ -87,7 +91,8 @@ export default defineConfig({
     include: [
       'react', 
       'react-dom', 
-      'react-router'
+      'react-router',
+      'hoist-non-react-statics'
     ],
     exclude: ['@iconify/react', '@emotion/react', '@emotion/styled'],
     // Force re-bundling of problematic dependencies

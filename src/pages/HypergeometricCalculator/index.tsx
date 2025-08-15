@@ -178,7 +178,7 @@ const HypergeometricCalculator: React.FC = () => {
   const copyShareLink = useCallback(async () => {
     if (!state.shareableId) return;
     
-    const shareUrl = `${window.location.origin}/calculator?share=${state.shareableId}`;
+    const shareUrl = `${window.location.origin}/#/calculator?share=${state.shareableId}`;
     
     try {
       await navigator.clipboard.writeText(shareUrl);
