@@ -100,6 +100,48 @@ const ProbabilityResults: React.FC<ProbabilityResultsProps> = ({
               )}
             </div>
 
+            {/* Quick Odds */}
+            <div className="mb-4 p-3 bg-zinc-800 rounded-lg border border-zinc-700">
+              <div className="flex items-center gap-2 mb-3">
+                <Icon icon="mdi:flash" className="text-yellow-400" />
+                <span className="text-zinc-300 font-medium">Quick Odds</span>
+              </div>
+              <div className="grid grid-cols-2 gap-3 text-sm">
+                <div className="flex items-center justify-between">
+                  <span className="text-zinc-400">Destiny Draw (1):</span>
+                  {result.minDesiredCount >= 2 ? (
+                    <span className="text-zinc-500">—</span>
+                  ) : (
+                    <span className={`font-semibold ${getProbabilityColor(result.destinyDraw)}`}>{formatPercentage(result.destinyDraw)}</span>
+                  )}
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-zinc-400">Greed Draw (2):</span>
+                  <span className={`font-semibold ${getProbabilityColor(result.greedDraw)}`}>{formatPercentage(result.greedDraw)}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-zinc-400">Prosperity 3:</span>
+                  {result.minDesiredCount >= 2 ? (
+                    <span className="text-zinc-500">—</span>
+                  ) : (
+                    <span className={`font-semibold ${getProbabilityColor(result.prosperity3)}`}>{formatPercentage(result.prosperity3)}</span>
+                  )}
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-zinc-400">Prosperity 6:</span>
+                  {result.minDesiredCount >= 2 ? (
+                    <span className="text-zinc-500">—</span>
+                  ) : (
+                    <span className={`font-semibold ${getProbabilityColor(result.prosperity6)}`}>{formatPercentage(result.prosperity6)}</span>
+                  )}
+                </div>
+                <div className="flex items-center justify-between col-span-2">
+                  <span className="text-zinc-400">Desires (banish 10, draw 2):</span>
+                  <span className={`font-semibold ${getProbabilityColor(result.desiresDraw)}`}>{formatPercentage(result.desiresDraw)}</span>
+                </div>
+              </div>
+            </div>
+
             {/* With Searchers (if applicable) */}
             {result.withSearchers !== undefined && (
               <div className="mb-4 p-3 bg-zinc-800 rounded-lg border border-orange-500/30">
@@ -133,91 +175,8 @@ const ProbabilityResults: React.FC<ProbabilityResultsProps> = ({
                 )}
               </div>
             )}
-
-            {/* Detailed Breakdown */}
-            <div className="space-y-2">
-              <h4 className="text-sm font-medium text-zinc-400 mb-2">Detailed Breakdown:</h4>
-              {result.probabilities.map(({ copies, probability }) => (
-                <div key={copies} className="flex items-center justify-between text-sm">
-                  <span className="text-zinc-400">
-                    Exactly {copies} card{copies !== 1 ? 's' : ''}:
-                  </span>
-                  <span className={`font-medium ${getProbabilityColor(probability)}`}>
-                    {formatPercentage(probability)}
-                  </span>
-                </div>
-              ))}
-            </div>
-
-            {/* Statistical Info */}
-            <div className="mt-4 pt-3 border-t border-zinc-600 text-xs text-zinc-500">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <span className="font-medium">Deck size:</span> 40 cards
-                </div>
-                <div>
-                  <span className="font-medium">Hand size:</span> {handSize} cards
-                </div>
-              </div>
-            </div>
           </div>
         ))}
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        {/* Summary Statistics */}
-      {results.length > 1 && (
-        <div className="bg-zinc-700 rounded-lg p-4 border border-zinc-600">
-          <h3 className="text-lg font-semibold text-zinc-200 mb-3 flex items-center gap-2">
-            <Icon icon="mdi:chart-box" className="text-blue-400" />
-            Summary
-          </h3>
-
-          <div className="space-y-2">
-            {/* Best odds */}
-            <div className="flex items-center justify-between">
-              <span className="text-zinc-400">Best odds (desired range):</span>
-              <span className={`font-medium ${getProbabilityColor(Math.max(...results.map(r => r.inDesiredRange)))}`}>
-                {formatPercentage(Math.max(...results.map(r => r.inDesiredRange)))}
-              </span>
-            </div>
-
-            {/* Average odds */}
-            <div className="flex items-center justify-between">
-              <span className="text-zinc-400">Average odds (desired range):</span>
-              <span className={`font-medium ${getProbabilityColor(results.reduce((sum, r) => sum + r.inDesiredRange, 0) / results.length)}`}>
-                {formatPercentage(results.reduce((sum, r) => sum + r.inDesiredRange, 0) / results.length)}
-              </span>
-            </div>
-
-            {results.some(r => r.withSearchers !== undefined) && (
-              <div className="flex items-center justify-between">
-                <span className="text-zinc-400">Best with searchers:</span>
-                <span className={`font-medium ${getProbabilityColor(Math.max(...results.map(r => r.withSearchers || 0)))}`}>
-                  {formatPercentage(Math.max(...results.map(r => r.withSearchers || 0)))}
-                </span>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* Calculation Notes */}
-      <div className="bg-zinc-800 rounded-lg p-4 border border-zinc-700">
-        <h4 className="text-sm font-semibold text-zinc-300 mb-2 flex items-center gap-2">
-          <Icon icon="mdi:information" className="text-blue-400" />
-          Calculation Notes
-        </h4>
-        <ul className="text-xs text-zinc-400 space-y-1">
-          <li>• Probabilities calculated using hypergeometric distribution</li>
-          <li>• Assumes 40-card main deck and random shuffling</li>
-          <li>• "N-M cards" means drawing between N and M cards from the group</li>
-          <li>• "At least N" means drawing N or more cards from the group</li>
-          <li>• Searcher calculations assume OR logic (target OR searcher)</li>
-          <li>• Target cards cannot be selected as searchers</li>
-          <li>• Results are theoretical and may vary in actual gameplay</li>
-        </ul>
-      </div>
       </div>
     </div>
   );

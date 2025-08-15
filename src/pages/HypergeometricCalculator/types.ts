@@ -31,6 +31,12 @@ export interface ProbabilityResult {
   inDesiredRange: number; // Probability of drawing within the desired range
   atLeastMin: number; // Probability of drawing at least the minimum
   withSearchers?: number; // Probability including searchers (if any)
+  // Quick odds for common effects
+  destinyDraw: number;     // draw 1 (e.g., normal draw/upstart)
+  greedDraw: number;       // draw 2 at once (e.g., Pot of Greed)
+  prosperity3: number;     // find in next 3 (Pot of Prosperity 3)
+  prosperity6: number;     // find in next 6 (Pot of Prosperity 6)
+  desiresDraw: number;     // banish 10 unseen, then draw 2 (Pot of Desires)
 }
 
 export interface CardSelectorProps {

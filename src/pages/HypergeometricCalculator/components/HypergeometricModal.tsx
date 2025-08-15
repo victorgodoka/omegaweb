@@ -123,6 +123,66 @@ const HypergeometricModal: React.FC<HypergeometricModalProps> = ({
           </div>
         </div>
 
+        {/* Quick Odds (Shortcuts) */}
+        <div>
+          <h3 className="text-zinc-200 font-semibold mb-3 flex items-center gap-2">
+            <Icon icon="mdi:flash" className="text-yellow-400" />
+            Quick Odds (what the shortcuts mean)
+          </h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* Destiny Draw */}
+            <div className="bg-zinc-700/50 rounded-lg p-4">
+              <h4 className="text-zinc-100 font-medium mb-2 flex items-center gap-2">
+                <Icon icon="mdi:cards" className="text-blue-400" />
+                Destiny Draw (draw 1 after opening)
+              </h4>
+              <p className="text-sm mb-2">Treat as drawing the first h+1 cards of the deck.</p>
+              <div className="bg-zinc-900 rounded p-2 text-xs font-mono">
+                P(at least 1) = 1 − C(N−K, h+1) / C(N, h+1)
+              </div>
+              <p className="text-xs mt-2 text-zinc-400">If your group requires ≥2 cards, this shortcut is not applicable.</p>
+            </div>
+
+            {/* Pot of Greed */}
+            <div className="bg-zinc-700/50 rounded-lg p-4">
+              <h4 className="text-zinc-100 font-medium mb-2 flex items-center gap-2">
+                <Icon icon="mdi:cards-playing-outline" className="text-green-400" />
+                Pot of Greed (draw 2 after opening)
+              </h4>
+              <p className="text-sm mb-2">Treat as drawing the first h+2 cards of the deck.</p>
+              <div className="bg-zinc-900 rounded p-2 text-xs font-mono">
+                P(at least 1) = 1 − C(N−K, h+2) / C(N, h+2)
+              </div>
+            </div>
+
+            {/* Prosperity */}
+            <div className="bg-zinc-700/50 rounded-lg p-4">
+              <h4 className="text-zinc-100 font-medium mb-2 flex items-center gap-2">
+                <Icon icon="mdi:magnify" className="text-purple-400" />
+                Pot of Prosperity (m ∈ {'{'}3, 6{'}'})
+              </h4>
+              <p className="text-sm mb-2">Complement rule: fail both steps (none in opening, none in m excavated), then subtract from 1.</p>
+              <div className="bg-zinc-900 rounded p-2 text-xs font-mono">
+                P = 1 − [ C(N−K, h) / C(N, h) ] × [ C((N−h)−K, m) / C(N−h, m) ]
+              </div>
+              <p className="text-xs mt-2 text-zinc-400">This matches “no replacement” across stages (open h, then check top m of the remaining deck).</p>
+            </div>
+
+            {/* Desires */}
+            <div className="bg-zinc-700/50 rounded-lg p-4">
+              <h4 className="text-zinc-100 font-medium mb-2 flex items-center gap-2">
+                <Icon icon="mdi:cards-heart" className="text-orange-400" />
+                Pot of Desires (banish 10, then draw 2)
+              </h4>
+              <p className="text-sm mb-2">Complement rule across stages; the marginal result equals drawing the first h+2 cards.</p>
+              <div className="bg-zinc-900 rounded p-2 text-xs font-mono">
+                P = 1 − [ C(N−K, h) / C(N, h) ] × [ C((N−h)−K, 2) / C(N−h, 2) ]
+                <br/>≡ 1 − C(N−K, h+2) / C(N, h+2)
+              </div>
+            </div>
+          </div>
+        </div>
+
         {/* How to Use This Calculator */}
         <div>
           <h3 className="text-zinc-200 font-semibold mb-3 flex items-center gap-2">

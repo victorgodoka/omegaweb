@@ -307,6 +307,78 @@ const HypergeometricCalculator: React.FC = () => {
 
     const results: ProbabilityResult[] = [];
 
+    // Shared combination helper
+    const combination = (a: number, b: number): number => {
+      if (b > a || b < 0) return 0;
+      if (b === 0 || b === a) return 1;
+      let res = 1;
+      for (let i = 0; i < Math.min(b, a - b); i++) {
+        res = (res * (a - i)) / (i + 1);
+      }
+      return Math.round(res);
+    };
+
+    // Probability of at least one success in s draws from a deck of size n with k successes
+    const probAtLeastOne = (n: number, k: number, s: number): number => {
+      if (n <= 0 || k <= 0 || s <= 0) return 0;
+      const sample = Math.min(s, n);
+      const denom = combination(n, sample);
+      const numer = combination(n - k, sample);
+      return denom === 0 ? 0 : 1 - numer / denom;
+    };
+
+    // Total-draw odds: at least one in the first (h + s) cards from deck of size n with k successes
+    const totalDrawOdds = (n: number, k: number, h: number, s: number): number => {
+      const draws = h + s;
+      if (n <= 0 || k <= 0 || draws <= 0) return 0;
+      const denom = combination(n, draws);
+      const numer = combination(n - k, draws);
+      return denom === 0 ? 0 : 1 - numer / denom;
+    };
+
+    // Prosperity odds using complement rule from the image:
+    // P = 1 - P(no target in first h) * P(no target in m | no target in first h)
+    const prosperityOdds = (n: number, k: number, h: number, m: number): number => {
+      if (n <= 0 || k <= 0 || h < 0 || m <= 0 || h > n) return 0;
+      // P(no in first h) = C(n-k, h) / C(n, h)
+      const denomH = combination(n, h);
+      const numerH = combination(n - k, h);
+      const pNoInH = denomH === 0 ? 0 : numerH / denomH;
+      // Given no in first h, still k successes left in remaining n-h cards
+      // P(no in next m | no in first h) = C((n-h)-k, m) / C(n-h, m)
+      const denomM = combination(n - h, m);
+      const numerM = combination(n - h - k, m);
+      const pNoInM = denomM === 0 ? 0 : numerM / denomM;
+      return 1 - pNoInH * pNoInM;
+    };
+
+    // Conditional Desires odds: no target in opening hand, banish 10 from remaining, then draw 2
+    const conditionalDesires = (n: number, k: number, h: number): number => {
+      const banish = 10;
+      const draws = 2;
+      if (n <= 0 || h < 0 || h > n) return 0;
+      // No target in opening hand
+      const denomOpen = combination(n, h);
+      const numerOpen = combination(n - k, h);
+      const pNoInHand = denomOpen === 0 ? 0 : numerOpen / denomOpen;
+      const n1 = n - h;
+      if (n1 <= 0) return 0;
+      const totalWays = combination(n1, Math.min(banish, n1));
+      if (totalWays === 0) return 0;
+      const maxBanish = Math.min(banish, n1);
+      const maxR = Math.min(maxBanish, k);
+      let sum = 0;
+      for (let r = 0; r <= maxR; r++) {
+        const ways = combination(k, r) * combination(n1 - k, maxBanish - r);
+        const probThisR = ways / totalWays;
+        const kRemain = k - r;
+        const nRemain = n1 - maxBanish;
+        const pAtLeastOne = probAtLeastOne(nRemain, kRemain, draws);
+        sum += probThisR * pAtLeastOne;
+      }
+      return pNoInHand * sum;
+    };
+
     state.targetCards.forEach((group: CardGroup) => {
       // Count total copies of target cards in this group (using instance IDs)
       const targetCopies = group.cards.length; // Each instance ID represents one copy
@@ -352,6 +424,17 @@ const HypergeometricCalculator: React.FC = () => {
           .reduce((sum, p) => sum + p.probability, 0);
       }
 
+      // Quick odds calculations (targets only), conditional on opening hand already drawn
+      const n = deckSize;
+      const h = state.handSize;
+      const needsTwoOrMore = group.minDesiredCount >= 2;
+      // Destiny and Greed follow the "treat as one draw of h+s" identity
+      const destinyDraw = needsTwoOrMore ? 0 : totalDrawOdds(n, targetCopies, h, 1);
+      const greedDraw = totalDrawOdds(n, targetCopies, h, 2);
+      const prosperity3 = needsTwoOrMore ? 0 : prosperityOdds(n, targetCopies, h, 3);
+      const prosperity6 = needsTwoOrMore ? 0 : prosperityOdds(n, targetCopies, h, 6);
+      const desiresDraw = conditionalDesires(n, targetCopies, h);
+
       results.push({
         groupName: group.name,
         totalCopies: targetCopies,
@@ -360,7 +443,12 @@ const HypergeometricCalculator: React.FC = () => {
         probabilities: targetProbabilities, // Show target-only breakdown in detailed view
         inDesiredRange,
         atLeastMin,
-        withSearchers: group.searcherCards.length > 0 ? withSearchers : undefined
+        withSearchers: group.searcherCards.length > 0 ? withSearchers : undefined,
+        destinyDraw,
+        greedDraw,
+        prosperity3,
+        prosperity6,
+        desiresDraw
       });
     });
 
