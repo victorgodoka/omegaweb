@@ -1,5 +1,5 @@
 // src/utils/auth.ts
-import { api } from './Api';
+import { api, API_ENDPOINTS } from './Api';
 
 export interface LoginResponse {
   success: boolean;
@@ -154,8 +154,9 @@ export async function authenticatedFetch(
   options: RequestInit = {}
 ): Promise<Response> {
   const authHeaders = AuthManager.getAuthHeader();
-  
-  const response = await fetch(url, {
+  const fullUrl = url.startsWith('http') ? url : `${API_ENDPOINTS.MAIN}/${url.replace(/^\//, '')}`;
+
+  const response = await fetch(fullUrl, {
     ...options,
     headers: {
       'Content-Type': 'application/json',

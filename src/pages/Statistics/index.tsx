@@ -240,7 +240,7 @@ const Statistics = () => {
           const usage = calculateUsage(deck.w, deck.l);
           
           return (
-            <div key={deck.c} className="bg-zinc-800/70 border border-zinc-600 rounded-lg p-4 hover:bg-zinc-700/70 transition-colors duration-200">
+            <div key={`${deck.c}-${deck.n}`} className="bg-zinc-800/70 border border-zinc-600 rounded-lg p-4 hover:bg-zinc-700/70 transition-colors duration-200">
               <div className="flex items-center gap-4">
                 {/* Rank */}
                 <div className="w-8 h-8 bg-zinc-700 rounded flex items-center justify-center text-zinc-300 text-sm font-medium">

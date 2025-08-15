@@ -1,5 +1,5 @@
 // src/utils/calculatorApi.ts
-import { authenticatedFetch } from './auth';
+import { AuthManager } from './auth';
 import { api } from './Api';
 
 export interface CardGroup {
@@ -41,13 +41,19 @@ export async function saveCalculatorConfiguration(
   config: CalculatorConfiguration
 ): Promise<SaveCalculatorResponse> {
   try {
-    const response = await authenticatedFetch('calculator/save', {
-      method: 'POST',
-      body: JSON.stringify(config),
+    const headers = AuthManager.getAuthHeader();
+    const res = await api.main.post<SaveCalculatorResponse>('calculator/save', config, {
+      headers: {
+        ...headers,
+      },
     });
 
-    const data: SaveCalculatorResponse = await response.json();
-    return data;
+    return {
+      success: res.success || false,
+      shareableId: (res.data as any)?.shareableId,
+      shareUrl: (res.data as any)?.shareUrl,
+      message: res.message,
+    };
   } catch (error) {
     console.error('Error saving calculator configuration:', error);
     return {

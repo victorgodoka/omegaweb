@@ -112,6 +112,18 @@ export const api = {
         }
       },
 
+      // User count by rank for Omega (tapi)
+      getUserCount: async () => {
+        try {
+          const response = await fetch(`${API_ENDPOINTS.DUELISTS_UNITE}/tapi/usercount`);
+          if (!response.ok) throw new Error('Failed to fetch user count');
+          return { data: await response.json(), ok: true };
+        } catch (error) {
+          console.error('Duelists Unite API Error:', error);
+          return { ok: false, message: error instanceof Error ? error.message : 'Unknown error' };
+        }
+      },
+
       getDatabase: async (table: string, bucket?: string) => {
         try {
           const url = `${API_ENDPOINTS.DUELISTS_UNITE}/api/database/read/${table}${bucket ? `?bucket=${bucket}` : ''}`;
@@ -168,11 +180,12 @@ export const api = {
 
     // YGOPRODeck API
     ygoproDeck: {
-      getCardInfo: async (misc: boolean = true) => {
+      getCardInfo: async (misc: boolean = true, options?: RequestInit) => {
         try {
           const url = `${API_ENDPOINTS.YGOPRODECK}/cardinfo.php${misc ? '?misc=yes' : ''}`;
           const response = await fetch(url, {
             headers: { 'Accept': 'application/json' },
+            ...options,
           });
           if (!response.ok) throw new Error('Failed to fetch card info');
           return { data: await response.json(), ok: true };

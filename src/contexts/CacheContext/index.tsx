@@ -1,5 +1,6 @@
 import { setCache, getCache, isCacheExpired, clearCache } from "@/utils/Cache";
 import { compareCards } from "@/utils/Cards";
+import { api } from "@/utils/Api";
 import { type ReactNode, useState, useEffect, useContext, createContext, useRef, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 // Import YGOAPI type from a central location if available
@@ -71,17 +72,16 @@ export const CacheProvider = ({ children }: { children: ReactNode }) => {
     abortRef.current?.abort();
     abortRef.current = new AbortController();
     try {
-      const response = await fetch('https://db.ygoprodeck.com/api/v7/cardinfo.php?misc=yes', {
-        signal: abortRef.current.signal
-      });
-      if (!response.ok) {
-        throw new Error(`Erro na API: ${response.status} - ${response.statusText}`);
+      const res = await api.external.ygoproDeck.getCardInfo(true, { signal: abortRef.current.signal });
+      if (!res.ok) {
+        throw new Error(MESSAGES.FETCH_API_ERROR);
       }
-      const result = await response.json();
-      if (!result.data || !Array.isArray(result.data) || result.data.length === 0) {
+      const result = res.data as any;
+      const list = result?.data;
+      if (!list || !Array.isArray(list) || list.length === 0) {
         throw new Error(MESSAGES.INVALID_API_DATA);
       }
-      const cardStatsData: YGOAPI[] = result.data
+      const cardStatsData: YGOAPI[] = list
         .filter(({ misc_info, humanReadableCardType }: YGOAPI) =>
           humanReadableCardType !== 'Token' &&
           misc_info?.[0]?.formats?.some(format => format === 'TCG' || format === 'OCG')

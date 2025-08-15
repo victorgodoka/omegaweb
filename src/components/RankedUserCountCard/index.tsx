@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { api } from "@/utils/Api";
 
 export interface RankedData {
   bronze: number;
@@ -23,8 +24,6 @@ const getRanks = (t: any): { key: keyof RankedData; label: string; color: string
   { key: "omega", label: t("ranks.omega"), color: "bg-gradient-to-t from-orange-700 to-orange-400" },
 ];
 
-const API_URL = "https://duelistsunite.org/tapi/usercount";
-
 const RankedUserCountCard = () => {
   const [data, setData] = useState<RankedData | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -32,10 +31,18 @@ const RankedUserCountCard = () => {
   const { t } = useTranslation();
 
   useEffect(() => {
-    fetch(API_URL)
-      .then(r => r.json())
-      .then(setData)
-      .catch(() => setError(t("error_loading_rank_data")));
+    let mounted = true;
+    api.external.duelistsUnite.getUserCount()
+      .then((res) => {
+        if (!mounted) return;
+        if (res.ok && res.data) {
+          setData(res.data as RankedData);
+        } else {
+          setError(t("error_loading_rank_data"));
+        }
+      })
+      .catch(() => mounted && setError(t("error_loading_rank_data")));
+    return () => { mounted = false; };
   }, [t]);
 
   if (error) return <div className="w-full py-10 text-center text-red-500">{error}</div>;

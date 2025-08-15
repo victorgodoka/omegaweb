@@ -3,10 +3,8 @@ import { useTranslation } from "react-i18next";
 import RankedUserCountCard from "@/components/RankedUserCountCard";
 import { LineChart } from '@mui/x-charts/LineChart';
 import { useLoadingContext } from "@/contexts/LoadingContext";
+import { api } from "@/utils/Api";
 
-export interface UniqueLogins {
-  data: UniqueLoginsData;
-}
 export interface UniqueLoginsData {
   logins: Login[];
   total: number;
@@ -21,8 +19,6 @@ function formatDate(date: string) {
   return new Date(date).toLocaleDateString(undefined, { month: "short", day: "numeric" });
 }
 
-const API_URL = import.meta.env.VITE_API_URL + "/lastlogins";
-
 const UniqueLoginsStats = () => {
   const [logins, setLogins] = useState<Login[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -35,28 +31,33 @@ const UniqueLoginsStats = () => {
 
   useEffect(() => {
     dispatch({ type: 'SET_LOADING', payload: true });
-    fetch(API_URL)
-      .then(r => r.json())
-      .then((data: UniqueLogins) => {
-        setLogins(data.data.logins);
-        setTotal(data.data.total);
-        // Calculate % change
-        const last7 = data.data.logins.slice(-7);
-        const prev7 = data.data.logins.slice(-14, -7);
-        const sum = (arr: Login[]) => arr.reduce((a, b) => a + b.LogCount, 0);
-        if (last7.length === 7 && prev7.length === 7) {
-          const lastSum = sum(last7);
-          const prevSum = sum(prev7);
-          if (prevSum > 0) {
-            const change = ((lastSum - prevSum) / prevSum) * 100;
-            setPercentChange(change);
-            setTrendUp(change >= 0);
+    api.main.get<UniqueLoginsData>('lastlogins')
+      .then((res) => {
+        if (res.ok && res.data) {
+          const data = res.data as UniqueLoginsData;
+          setLogins(data.logins);
+          setTotal(data.total);
+          // Calculate % change
+          const last7 = data.logins.slice(-7);
+          const prev7 = data.logins.slice(-14, -7);
+          const sum = (arr: Login[]) => arr.reduce((a, b) => a + b.LogCount, 0);
+          if (last7.length === 7 && prev7.length === 7) {
+            const lastSum = sum(last7);
+            const prevSum = sum(prev7);
+            if (prevSum > 0) {
+              const change = ((lastSum - prevSum) / prevSum) * 100;
+              setPercentChange(change);
+              setTrendUp(change >= 0);
+            }
           }
+        } else {
+          setError("Could not load login statistics.");
         }
-        dispatch({ type: 'SET_LOADING', payload: false });
       })
       .catch(() => {
         setError("Could not load login statistics.");
+      })
+      .finally(() => {
         dispatch({ type: 'SET_LOADING', payload: false });
       });
     // eslint-disable-next-line react-hooks/exhaustive-deps
