@@ -5,6 +5,7 @@ import { useAuth } from '../../../hooks/useAuth';
 import { LoginModal } from '../../../components/LoginModal';
 import { saveCalculatorConfiguration } from '../../../utils/calculatorApi';
 import type { CardGroup } from '../types';
+import { useTranslation } from 'react-i18next';
 
 interface SaveShareControlsProps {
   deckCode: string;
@@ -22,6 +23,7 @@ export const SaveShareControls: React.FC<SaveShareControlsProps> = ({
   onShareSuccess,
 }) => {
   const { isLoggedIn, userId, logout } = useAuth();
+  const { t } = useTranslation();
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState('');
@@ -33,7 +35,7 @@ export const SaveShareControls: React.FC<SaveShareControlsProps> = ({
     }
 
     if (!isDeckValid || targetCards.length === 0) {
-      setSaveError('Please ensure you have a valid deck and at least one target card group');
+      setSaveError(t('calculator.share.ensure_valid_deck_and_group'));
       return;
     }
 
@@ -50,10 +52,10 @@ export const SaveShareControls: React.FC<SaveShareControlsProps> = ({
       if (response.success && response.shareableId && response.shareUrl) {
         onShareSuccess?.(response.shareableId, response.shareUrl);
       } else {
-        setSaveError(response.message || 'Failed to save configuration');
+        setSaveError(response.message || t('calculator.share.save_failed'));
       }
     } catch (error) {
-      setSaveError('Network error. Please try again.');
+      setSaveError(t('common.network_error'));
     } finally {
       setIsSaving(false);
     }
@@ -72,11 +74,11 @@ export const SaveShareControls: React.FC<SaveShareControlsProps> = ({
         {isLoggedIn ? (
           <div className="bg-green-50 border border-green-200 text-green-800 flex items-center gap-2 w-full p-3 rounded-md">
             <Icon icon="mdi:account-check" className="text-xl" />
-            <span>Logged in as: {userId}</span>
+            <span>{t('auth.logged_in_as', { userId })}</span>
             <button 
               onClick={logout}
               className="ml-auto p-1 hover:bg-green-100 rounded text-green-800"
-              title="Logout"
+              title={t('auth.logout')}
             >
               <Icon icon="mdi:logout" />
             </button>
@@ -84,7 +86,7 @@ export const SaveShareControls: React.FC<SaveShareControlsProps> = ({
         ) : (
           <div className="bg-yellow-50 border border-yellow-200 text-yellow-800 flex items-center gap-2 w-full p-3 rounded-md">
             <Icon icon="mdi:account-off" className="text-xl" />
-            <span>Not logged in</span>
+            <span>{t('auth.not_logged_in')}</span>
           </div>
         )}
       </div>
@@ -98,7 +100,7 @@ export const SaveShareControls: React.FC<SaveShareControlsProps> = ({
           icon={isSaving ? "mdi:loading" : "mdi:share-variant"} 
           className={isSaving ? "animate-spin" : ""} 
         />
-        {isSaving ? 'Saving...' : isLoggedIn ? 'Save & Share' : 'Login to Save & Share'}
+        {isSaving ? t('common.saving') : isLoggedIn ? t('calculator.share.save_and_share') : t('calculator.share.login_to_save_and_share')}
       </button>
 
       {saveError && (

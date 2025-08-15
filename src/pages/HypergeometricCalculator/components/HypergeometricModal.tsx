@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Icon } from '@iconify/react';
 import Modal from '@/components/ui/Modal';
+import { useTranslation } from 'react-i18next';
 
 interface HypergeometricModalProps {
   isOpen: boolean;
@@ -12,6 +13,7 @@ const HypergeometricModal: React.FC<HypergeometricModalProps> = ({
   onClose
 }) => {
   const [dontShowAgain, setDontShowAgain] = useState(false);
+  const { t } = useTranslation();
 
   const handleClose = () => {
     if (dontShowAgain) {
@@ -27,7 +29,7 @@ const HypergeometricModal: React.FC<HypergeometricModalProps> = ({
     <Modal
       isOpen={isOpen}
       onClose={handleClose}
-      title="Understanding Hypergeometric Distribution"
+      title={t('calculator.modal.title')}
       size="xl"
       closeOnOverlayClick={true}
       closeOnEscape={true}
@@ -38,12 +40,8 @@ const HypergeometricModal: React.FC<HypergeometricModalProps> = ({
           <div className="flex items-start gap-3">
             <Icon icon="mdi:lightbulb" className="text-blue-400 text-xl flex-shrink-0 mt-0.5" />
             <div>
-              <h3 className="text-blue-400 font-semibold mb-2">What is Hypergeometric Distribution?</h3>
-              <p className="text-sm leading-relaxed">
-                The hypergeometric distribution calculates the probability of drawing a specific number of "success" cards 
-                from a deck without replacement. It's perfect for Yu-Gi-Oh! because once you draw a card, it's no longer 
-                available in your deck.
-              </p>
+              <h3 className="text-blue-400 font-semibold mb-2">{t('calculator.modal.intro.title')}</h3>
+              <p className="text-sm leading-relaxed">{t('calculator.modal.intro.text')}</p>
             </div>
           </div>
         </div>
@@ -52,26 +50,24 @@ const HypergeometricModal: React.FC<HypergeometricModalProps> = ({
         <div>
           <h3 className="text-zinc-200 font-semibold mb-3 flex items-center gap-2">
             <Icon icon="mdi:cog" className="text-orange-400" />
-            How It Works
+            {t('calculator.modal.how_it_works.title')}
           </h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="bg-zinc-700/50 rounded-lg p-4">
-              <h4 className="text-orange-400 font-medium mb-2">The Formula</h4>
+              <h4 className="text-orange-400 font-medium mb-2">{t('calculator.modal.how_it_works.formula_title')}</h4>
               <div className="bg-zinc-900 rounded p-3 font-mono text-sm mb-2">
                 P(X = k) = C(K,k) × C(N-K,n-k) / C(N,n)
               </div>
               <ul className="text-xs space-y-1">
-                <li><strong>N:</strong> Total deck size (usually 40)</li>
-                <li><strong>K:</strong> Number of target cards in deck</li>
-                <li><strong>n:</strong> Cards drawn (hand size)</li>
-                <li><strong>k:</strong> Target cards you want to draw</li>
+                <li><strong>N:</strong> {t('calculator.modal.how_it_works.N')}</li>
+                <li><strong>K:</strong> {t('calculator.modal.how_it_works.K')}</li>
+                <li><strong>n:</strong> {t('calculator.modal.how_it_works.n')}</li>
+                <li><strong>k:</strong> {t('calculator.modal.how_it_works.k')}</li>
               </ul>
             </div>
             <div className="bg-zinc-700/50 rounded-lg p-4">
-              <h4 className="text-green-400 font-medium mb-2">Example Calculation</h4>
-              <p className="text-sm mb-2">
-                Drawing exactly 1 Ash Blossom from 3 copies in a 40-card deck with 5-card hand:
-              </p>
+              <h4 className="text-green-400 font-medium mb-2">{t('calculator.modal.how_it_works.example_title')}</h4>
+              <p className="text-sm mb-2">{t('calculator.modal.how_it_works.example_desc')}</p>
               <div className="bg-zinc-900 rounded p-2 text-xs font-mono">
                 P = C(3,1) × C(37,4) / C(40,5)<br/>
                 P = 3 × 58,905 / 658,008<br/>
@@ -85,39 +81,39 @@ const HypergeometricModal: React.FC<HypergeometricModalProps> = ({
         <div>
           <h3 className="text-zinc-200 font-semibold mb-3 flex items-center gap-2">
             <Icon icon="mdi:key" className="text-yellow-400" />
-            Key Concepts
+            {t('calculator.modal.key_concepts.title')}
           </h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-3">
               <div className="bg-green-900/30 border border-green-500/30 rounded-lg p-3">
                 <h4 className="text-green-400 font-medium mb-1 flex items-center gap-2">
                   <Icon icon="mdi:check-circle" className="text-sm" />
-                  Exactly N Cards
+                  {t('calculator.modal.key_concepts.exact_title')}
                 </h4>
-                <p className="text-sm">Probability of drawing exactly the specified number of target cards.</p>
+                <p className="text-sm">{t('calculator.modal.key_concepts.exact_desc')}</p>
               </div>
               <div className="bg-blue-900/30 border border-blue-500/30 rounded-lg p-3">
                 <h4 className="text-blue-400 font-medium mb-1 flex items-center gap-2">
                   <Icon icon="mdi:greater-than-or-equal" className="text-sm" />
-                  At Least N Cards
+                  {t('calculator.modal.key_concepts.atleast_title')}
                 </h4>
-                <p className="text-sm">Probability of drawing the specified number or more target cards.</p>
+                <p className="text-sm">{t('calculator.modal.key_concepts.atleast_desc')}</p>
               </div>
             </div>
             <div className="space-y-3">
               <div className="bg-purple-900/30 border border-purple-500/30 rounded-lg p-3">
                 <h4 className="text-purple-400 font-medium mb-1 flex items-center gap-2">
                   <Icon icon="mdi:target" className="text-sm" />
-                  Target Cards
+                  {t('calculator.modal.key_concepts.targets_title')}
                 </h4>
-                <p className="text-sm">The specific cards you want to draw (e.g., combo pieces, hand traps).</p>
+                <p className="text-sm">{t('calculator.modal.key_concepts.targets_desc')}</p>
               </div>
               <div className="bg-orange-900/30 border border-orange-500/30 rounded-lg p-3">
                 <h4 className="text-orange-400 font-medium mb-1 flex items-center gap-2">
                   <Icon icon="mdi:magnify" className="text-sm" />
-                  Searcher Cards
+                  {t('calculator.modal.key_concepts.searchers_title')}
                 </h4>
-                <p className="text-sm">Cards that can find your targets, effectively increasing your success rate.</p>
+                <p className="text-sm">{t('calculator.modal.key_concepts.searchers_desc')}</p>
               </div>
             </div>
           </div>
@@ -127,29 +123,29 @@ const HypergeometricModal: React.FC<HypergeometricModalProps> = ({
         <div>
           <h3 className="text-zinc-200 font-semibold mb-3 flex items-center gap-2">
             <Icon icon="mdi:flash" className="text-yellow-400" />
-            Quick Odds (what the shortcuts mean)
+            {t('calculator.modal.quick_odds.title')}
           </h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {/* Destiny Draw */}
             <div className="bg-zinc-700/50 rounded-lg p-4">
               <h4 className="text-zinc-100 font-medium mb-2 flex items-center gap-2">
                 <Icon icon="mdi:cards" className="text-blue-400" />
-                Destiny Draw (draw 1 after opening)
+                {t('calculator.modal.quick_odds.destiny.title')}
               </h4>
-              <p className="text-sm mb-2">Treat as drawing the first h+1 cards of the deck.</p>
+              <p className="text-sm mb-2">{t('calculator.modal.quick_odds.destiny.desc')}</p>
               <div className="bg-zinc-900 rounded p-2 text-xs font-mono">
                 P(at least 1) = 1 − C(N−K, h+1) / C(N, h+1)
               </div>
-              <p className="text-xs mt-2 text-zinc-400">If your group requires ≥2 cards, this shortcut is not applicable.</p>
+              <p className="text-xs mt-2 text-zinc-400">{t('calculator.modal.quick_odds.destiny.note')}</p>
             </div>
 
             {/* Pot of Greed */}
             <div className="bg-zinc-700/50 rounded-lg p-4">
               <h4 className="text-zinc-100 font-medium mb-2 flex items-center gap-2">
                 <Icon icon="mdi:cards-playing-outline" className="text-green-400" />
-                Pot of Greed (draw 2 after opening)
+                {t('calculator.modal.quick_odds.greed.title')}
               </h4>
-              <p className="text-sm mb-2">Treat as drawing the first h+2 cards of the deck.</p>
+              <p className="text-sm mb-2">{t('calculator.modal.quick_odds.greed.desc')}</p>
               <div className="bg-zinc-900 rounded p-2 text-xs font-mono">
                 P(at least 1) = 1 − C(N−K, h+2) / C(N, h+2)
               </div>
@@ -159,22 +155,22 @@ const HypergeometricModal: React.FC<HypergeometricModalProps> = ({
             <div className="bg-zinc-700/50 rounded-lg p-4">
               <h4 className="text-zinc-100 font-medium mb-2 flex items-center gap-2">
                 <Icon icon="mdi:magnify" className="text-purple-400" />
-                Pot of Prosperity (m ∈ {'{'}3, 6{'}'})
+                {t('calculator.modal.quick_odds.prosperity.title')}
               </h4>
-              <p className="text-sm mb-2">Complement rule: fail both steps (none in opening, none in m excavated), then subtract from 1.</p>
+              <p className="text-sm mb-2">{t('calculator.modal.quick_odds.prosperity.desc')}</p>
               <div className="bg-zinc-900 rounded p-2 text-xs font-mono">
                 P = 1 − [ C(N−K, h) / C(N, h) ] × [ C((N−h)−K, m) / C(N−h, m) ]
               </div>
-              <p className="text-xs mt-2 text-zinc-400">This matches “no replacement” across stages (open h, then check top m of the remaining deck).</p>
+              <p className="text-xs mt-2 text-zinc-400">{t('calculator.modal.quick_odds.prosperity.note')}</p>
             </div>
 
             {/* Desires */}
             <div className="bg-zinc-700/50 rounded-lg p-4">
               <h4 className="text-zinc-100 font-medium mb-2 flex items-center gap-2">
                 <Icon icon="mdi:cards-heart" className="text-orange-400" />
-                Pot of Desires (banish 10, then draw 2)
+                {t('calculator.modal.quick_odds.desires.title')}
               </h4>
-              <p className="text-sm mb-2">Complement rule across stages; the marginal result equals drawing the first h+2 cards.</p>
+              <p className="text-sm mb-2">{t('calculator.modal.quick_odds.desires.desc')}</p>
               <div className="bg-zinc-900 rounded p-2 text-xs font-mono">
                 P = 1 − [ C(N−K, h) / C(N, h) ] × [ C((N−h)−K, 2) / C(N−h, 2) ]
                 <br/>≡ 1 − C(N−K, h+2) / C(N, h+2)
@@ -187,23 +183,23 @@ const HypergeometricModal: React.FC<HypergeometricModalProps> = ({
         <div>
           <h3 className="text-zinc-200 font-semibold mb-3 flex items-center gap-2">
             <Icon icon="mdi:calculator" className="text-blue-400" />
-            How to Use This Calculator
+            {t('calculator.modal.how_to_use.title')}
           </h3>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="bg-zinc-700/50 rounded-lg p-4 text-center">
               <Icon icon="mdi:code-braces" className="text-3xl text-blue-400 mb-2 mx-auto" />
-              <h4 className="font-semibold mb-2">1. Load Your Deck</h4>
-              <p className="text-sm">Paste your deck code and validate it to load your deck list. Only main deck cards are used for calculations.</p>
+              <h4 className="font-semibold mb-2">{t('calculator.modal.how_to_use.step1_title')}</h4>
+              <p className="text-sm">{t('calculator.modal.how_to_use.step1_desc')}</p>
             </div>
             <div className="bg-zinc-700/50 rounded-lg p-4 text-center">
               <Icon icon="mdi:target" className="text-3xl text-orange-400 mb-2 mx-auto" />
-              <h4 className="font-semibold mb-2">2. Create Card Groups</h4>
-              <p className="text-sm">Group related cards together (e.g., "Hand Traps", "Combo Starters") and set how many you want to draw.</p>
+              <h4 className="font-semibold mb-2">{t('calculator.modal.how_to_use.step2_title')}</h4>
+              <p className="text-sm">{t('calculator.modal.how_to_use.step2_desc')}</p>
             </div>
             <div className="bg-zinc-700/50 rounded-lg p-4 text-center">
               <Icon icon="mdi:chart-line" className="text-3xl text-green-400 mb-2 mx-auto" />
-              <h4 className="font-semibold mb-2">3. Analyze Results</h4>
-              <p className="text-sm">View probability breakdowns and optimize your deck ratios based on the calculations.</p>
+              <h4 className="font-semibold mb-2">{t('calculator.modal.how_to_use.step3_title')}</h4>
+              <p className="text-sm">{t('calculator.modal.how_to_use.step3_desc')}</p>
             </div>
           </div>
         </div>
@@ -212,31 +208,30 @@ const HypergeometricModal: React.FC<HypergeometricModalProps> = ({
         <div>
           <h3 className="text-zinc-200 font-semibold mb-3 flex items-center gap-2">
             <Icon icon="mdi:star" className="text-yellow-400" />
-            Advanced Features
+            {t('calculator.modal.advanced.title')}
           </h3>
           <div className="space-y-3">
             <div className="bg-zinc-700/50 rounded-lg p-4">
               <h4 className="text-yellow-400 font-medium mb-2 flex items-center gap-2">
                 <Icon icon="mdi:group" className="text-sm" />
-                Card Groups & Desired Counts
+                {t('calculator.modal.advanced.groups_title')}
               </h4>
               <p className="text-sm mb-2">
-                Create groups of related cards and specify how many you want to see. For example:
+                {t('calculator.modal.advanced.groups_desc')}
               </p>
               <ul className="text-sm space-y-1 ml-4">
-                <li>• <strong>Hand Traps:</strong> Want to see at least 1 from Ash Blossom, Maxx "C", etc.</li>
-                <li>• <strong>Combo Starters:</strong> Want exactly 1-2 combo pieces in opening hand</li>
-                <li>• <strong>Engine Cards:</strong> Want to avoid drawing too many engine pieces</li>
+                <li>• <strong>{t('calculator.modal.advanced.examples.hand_traps.title')}:</strong> {t('calculator.modal.advanced.examples.hand_traps.desc')}</li>
+                <li>• <strong>{t('calculator.modal.advanced.examples.combo_starters.title')}:</strong> {t('calculator.modal.advanced.examples.combo_starters.desc')}</li>
+                <li>• <strong>{t('calculator.modal.advanced.examples.engine_cards.title')}:</strong> {t('calculator.modal.advanced.examples.engine_cards.desc')}</li>
               </ul>
             </div>
             <div className="bg-zinc-700/50 rounded-lg p-4">
               <h4 className="text-purple-400 font-medium mb-2 flex items-center gap-2">
                 <Icon icon="mdi:magnify" className="text-sm" />
-                Searcher Integration
+                {t('calculator.modal.advanced.searchers_title')}
               </h4>
               <p className="text-sm">
-                Assign searcher cards to specific groups to get more accurate probabilities. The calculator 
-                considers that drawing a searcher is almost as good as drawing the target card itself.
+                {t('calculator.modal.advanced.searchers_desc')}
               </p>
             </div>
           </div>
@@ -246,24 +241,24 @@ const HypergeometricModal: React.FC<HypergeometricModalProps> = ({
         <div className="bg-green-900/20 border border-green-500/30 rounded-lg p-4">
           <h3 className="text-green-400 font-semibold mb-3 flex items-center gap-2">
             <Icon icon="mdi:lightbulb-on" />
-            Pro Tips
+            {t('calculator.modal.tips.title')}
           </h3>
           <ul className="text-sm space-y-2">
             <li className="flex items-start gap-2">
               <Icon icon="mdi:check" className="text-green-400 flex-shrink-0 mt-0.5" />
-              <span>Use realistic hand sizes (5 for going first, 6 for going second)</span>
+              <span>{t('calculator.modal.tips.item1')}</span>
             </li>
             <li className="flex items-start gap-2">
               <Icon icon="mdi:check" className="text-green-400 flex-shrink-0 mt-0.5" />
-              <span>Group cards by function rather than by name for better insights</span>
+              <span>{t('calculator.modal.tips.item2')}</span>
             </li>
             <li className="flex items-start gap-2">
               <Icon icon="mdi:check" className="text-green-400 flex-shrink-0 mt-0.5" />
-              <span>Consider searchers when calculating combo piece probabilities</span>
+              <span>{t('calculator.modal.tips.item3')}</span>
             </li>
             <li className="flex items-start gap-2">
               <Icon icon="mdi:check" className="text-green-400 flex-shrink-0 mt-0.5" />
-              <span>Save and share your configurations to compare different deck builds</span>
+              <span>{t('calculator.modal.tips.item4')}</span>
             </li>
           </ul>
         </div>
@@ -277,19 +272,20 @@ const HypergeometricModal: React.FC<HypergeometricModalProps> = ({
               onChange={(e) => setDontShowAgain(e.target.checked)}
               className="rounded border-zinc-600 bg-zinc-700 text-blue-500 focus:ring-blue-500 focus:ring-offset-0"
             />
-            Don't show this again for 24 hours
+            {t('calculator.modal.footer.dont_show')}
           </label>
           <button
             onClick={handleClose}
             className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors flex items-center gap-2"
           >
             <Icon icon="mdi:check" />
-            Got it!
+            {t('calculator.modal.footer.got_it')}
           </button>
         </div>
       </div>
     </Modal>
   );
-};
+}
+;
 
 export default HypergeometricModal;

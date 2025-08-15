@@ -15,8 +15,8 @@ export interface Login {
   LogCount: number;
 }
 
-function formatDate(date: string) {
-  return new Date(date).toLocaleDateString(undefined, { month: "short", day: "numeric" });
+function formatDate(date: string, locale: string | undefined) {
+  return new Date(date).toLocaleDateString(locale, { month: "short", day: "numeric" });
 }
 
 const UniqueLoginsStats = () => {
@@ -27,7 +27,7 @@ const UniqueLoginsStats = () => {
   const [trendUp, setTrendUp] = useState<boolean | null>(null);
 
   const { dispatch } = useLoadingContext();
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
 
   useEffect(() => {
     dispatch({ type: 'SET_LOADING', payload: true });
@@ -51,11 +51,11 @@ const UniqueLoginsStats = () => {
             }
           }
         } else {
-          setError("Could not load login statistics.");
+          setError(t('statistics.error'));
         }
       })
       .catch(() => {
-        setError("Could not load login statistics.");
+        setError(t('statistics.error'));
       })
       .finally(() => {
         dispatch({ type: 'SET_LOADING', payload: false });
@@ -97,7 +97,7 @@ const UniqueLoginsStats = () => {
         {/* Line Chart for Last 7 Days */}
         <div className="w-full mx-auto">
           <LineChart
-            xAxis={[{ data: last7.map(l => formatDate(l.LogDate)), scaleType: 'point', label: t('date') }]}
+            xAxis={[{ data: last7.map(l => formatDate(l.LogDate, i18n.language)), scaleType: 'point', label: t('date') }]}
             series={[{
               data: last7.map(l => l.LogCount),
               color: '#fb923c',
@@ -148,7 +148,7 @@ const UniqueLoginsStats = () => {
               })() : null}
             </div>
             <span className="text-xs text-zinc-400 mt-1">
-              {logins.length > 0 ? formatDate(logins[logins.length - 1]?.LogDate) : ''}
+              {logins.length > 0 ? formatDate(logins[logins.length - 1]?.LogDate, i18n.language) : ''}
             </span>
           </div>
           {/* Total Logins */}

@@ -5,6 +5,7 @@ import { AuthManager } from '@/utils/auth';
 import { useToast } from '@/contexts/ToastContext';
 import type { ConvertData, Cards } from '../PDFGenerator/types';
 import type { CardGroup, CalculatorState, ProbabilityResult } from './types';
+import { useTranslation } from 'react-i18next';
 
 // Lazy load heavy components
 const CardSelector = lazy(() => import('./components/CardSelector'));
@@ -14,6 +15,7 @@ const HypergeometricModal = lazy(() => import('./components/HypergeometricModal'
 const HypergeometricCalculator: React.FC = () => {
   const { showSuccess, showError, showWarning } = useToast();
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const { t } = useTranslation();
 
   const [state, setState] = useState<CalculatorState>({
     deckCode: '',
@@ -54,7 +56,7 @@ const HypergeometricCalculator: React.FC = () => {
   // Validate deck code and fetch deck data
   const validateDeckCode = useCallback(async (deckCode: string) => {
     if (!deckCode.trim()) {
-      showError('Deck code is required');
+      showError(t('calculator.deck_code_required'));
       setState((prev: CalculatorState) => ({
         ...prev,
         isDeckValid: false,
@@ -79,7 +81,7 @@ const HypergeometricCalculator: React.FC = () => {
           results: null
         }));
       } else {
-        showError('Invalid deck code or failed to load deck');
+        showError(t('calculator.invalid_deck_code'));
         setState((prev: CalculatorState) => ({
           ...prev,
           isDeckValid: false,
@@ -88,7 +90,7 @@ const HypergeometricCalculator: React.FC = () => {
         }));
       }
     } catch (error) {
-      showError('Error validating deck code');
+      showError(t('calculator.error_validating_deck_code'));
       setState((prev: CalculatorState) => ({
         ...prev,
         isDeckValid: false,
@@ -127,7 +129,7 @@ const HypergeometricCalculator: React.FC = () => {
   // Create shareable link
   const createShareableLink = useCallback(async () => {
     if (!state.isDeckValid || state.targetCards.length === 0) {
-      showWarning('Please load a deck and add target groups before sharing');
+      showWarning(t('calculator.share.load_deck_and_add_groups'));
       return;
     }
 
@@ -151,23 +153,23 @@ const HypergeometricCalculator: React.FC = () => {
             shareableId: response.data.shareableId,
             isSharing: false 
           }));
-          showSuccess('Shareable link created!');
+          showSuccess(t('calculator.share.created'));
         } else {
-          showError(response.message || 'Failed to create shareable link');
+          showError(response.message || t('calculator.share.failed'));
           setState(prev => ({ 
             ...prev, 
             isSharing: false 
           }));
         }
       } else {
-        showError(response.message || 'Failed to create shareable link');
+        showError(response.message || t('calculator.share.failed'));
         setState(prev => ({ 
           ...prev, 
           isSharing: false 
         }));
       }
     } catch (error) {
-      showError('Network error. Please try again.');
+      showError(t('common.network_error'));
       setState(prev => ({ 
         ...prev, 
         isSharing: false 
@@ -183,7 +185,7 @@ const HypergeometricCalculator: React.FC = () => {
     
     try {
       await navigator.clipboard.writeText(shareUrl);
-      showSuccess('Link copied to clipboard!');
+      showSuccess(t('calculator.link_copied'));
     } catch (error) {
       // Fallback for older browsers
       const textArea = document.createElement('textarea');
@@ -192,7 +194,7 @@ const HypergeometricCalculator: React.FC = () => {
       textArea.select();
       document.execCommand('copy');
       document.body.removeChild(textArea);
-      showSuccess('Link copied to clipboard!');
+      showSuccess(t('calculator.link_copied'));
     }
   }, [state.shareableId, showSuccess]);
 
@@ -222,21 +224,21 @@ const HypergeometricCalculator: React.FC = () => {
             autoCalculate: true
           }));
         } else {
-          showError('Failed to load shared deck');
+          showError(t('calculator.share.load_failed'));
           setState(prev => ({
             ...prev,
             isLoading: false
           }));
         }
       } else {
-        showError('Shared configuration not found');
+        showError(t('calculator.share.not_found'));
         setState(prev => ({
           ...prev,
           isLoading: false
         }));
       }
     } catch (error) {
-      showError('Network error while loading shared configuration');
+      showError(t('calculator.share.loading_error'));
       setState(prev => ({
         ...prev,
         isLoading: false
@@ -518,7 +520,7 @@ const HypergeometricCalculator: React.FC = () => {
           <div className="bg-zinc-800 flex-1 rounded-lg border border-zinc-700 p-6">
             <h2 className="text-xl font-semibold text-zinc-200 mb-4 flex items-center gap-2">
               <Icon icon="mdi:code-braces" className="text-blue-400" />
-              Deck Code
+              {t('calculator.deck_code')}
             </h2>
 
             <div className="space-y-4">
@@ -526,7 +528,7 @@ const HypergeometricCalculator: React.FC = () => {
                 <input
                 value={state.deckCode}
                 onChange={(e) => handleDeckCodeChange(e.target.value)}
-                placeholder="Paste your deck code here..."
+                placeholder={t('calculator.deck_code_placeholder')}
                 className="w-full px-3 py-2 bg-zinc-700 border border-zinc-600 rounded-lg text-white placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
               />
 
@@ -551,7 +553,7 @@ const HypergeometricCalculator: React.FC = () => {
               {state.isDeckValid && (
                 <div className="flex items-center gap-2 text-green-400 text-sm">
                   <Icon icon="mdi:check-circle" />
-                  Deck loaded successfully ({deckSize} cards in main deck)
+                  {t('calculator.deck_loaded', { deckSize })}
                 </div>
               )}
             </div>
@@ -562,13 +564,13 @@ const HypergeometricCalculator: React.FC = () => {
             <div className="bg-zinc-800 rounded-lg border border-zinc-700 p-6">
               <h2 className="text-xl font-semibold text-zinc-200 mb-4 flex items-center gap-2">
                 <Icon icon="mdi:hand" className="text-orange-400" />
-                Sample Size
+                {t('calculator.sample_size')}
               </h2>
 
               <div className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-zinc-300 mb-2">
-                    Cards to draw
+                    {t('calculator.cards_to_draw')}
                   </label>
                   <input
                     type="number"
@@ -607,7 +609,7 @@ const HypergeometricCalculator: React.FC = () => {
                 <div className="flex flex-wrap items-center justify-between gap-4 mb-4">
                   <h2 className="text-xl font-semibold text-zinc-200 flex items-center gap-2">
                     <Icon icon="mdi:chart-line" className="text-green-400" />
-                    Probability Results
+                    {t('calculator.probability_results')}
                   </h2>
                   <div className="flex gap-2">
                     <button
@@ -616,7 +618,7 @@ const HypergeometricCalculator: React.FC = () => {
                       className="px-4 py-2 bg-green-600 text-white font-medium rounded-lg hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-2"
                     >
                       <Icon icon="mdi:calculator" />
-                      Calculate
+                      {t('calculator.calculate')}
                     </button>
                     
                     {/* Share Button */}
@@ -624,14 +626,14 @@ const HypergeometricCalculator: React.FC = () => {
                       onClick={createShareableLink}
                       disabled={!state.isDeckValid || state.targetCards.length === 0 || state.isSharing}
                       className="px-4 py-2 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-2"
-                      title="Create shareable link (requires login)"
+                      title={t('calculator.create_share_title')}
                     >
                       {state.isSharing ? (
                         <Icon icon="mdi:loading" className="animate-spin" />
                       ) : (
                         <Icon icon="mdi:share-variant" />
                       )}
-                      Share
+                      {t('calculator.share.button')}
                     </button>
                   </div>
                 </div>
@@ -648,7 +650,7 @@ const HypergeometricCalculator: React.FC = () => {
                 {state.targetCards.length === 0 && (
                   <div className="text-center py-8 text-zinc-400">
                     <Icon icon="mdi:target" className="text-4xl mb-2 mx-auto" />
-                    <p>Add target cards to calculate probabilities</p>
+                    <p>{t('calculator.add_target_cards_prompt')}</p>
                   </div>
                 )}
                 
@@ -660,14 +662,14 @@ const HypergeometricCalculator: React.FC = () => {
                     <div className="flex items-center justify-between mb-2">
                       <p className="text-green-400 text-sm font-medium flex items-center gap-2">
                         <Icon icon="mdi:check-circle" />
-                        Shareable link created!
+                        {t('calculator.share.created')}
                       </p>
                       <button
                         onClick={copyShareLink}
                         className="px-3 py-1 bg-green-600 text-white text-xs rounded hover:bg-green-700 transition-colors flex items-center gap-1"
                       >
                         <Icon icon="mdi:content-copy" />
-                        Copy Link
+                        {t('calculator.copy_link')}
                       </button>
                     </div>
                     <p className="text-green-300 text-xs break-all">
@@ -687,7 +689,7 @@ const HypergeometricCalculator: React.FC = () => {
           <button
             onClick={handleOpenModal}
             className="w-14 h-14 bg-blue-600 hover:bg-blue-700 text-white rounded-full shadow-lg hover:shadow-xl transition-all duration-300 flex items-center justify-center group-hover:scale-110"
-            aria-label="Learn about hypergeometric distribution"
+            aria-label={t('calculator.help.aria_label')}
           >
             <Icon icon="mdi:help-circle" className="text-2xl" />
           </button>
@@ -695,7 +697,7 @@ const HypergeometricCalculator: React.FC = () => {
           {/* Tooltip */}
           <div className="absolute left-16 top-1/2 transform -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none">
             <div className="bg-zinc-800 text-zinc-200 text-sm px-3 py-2 rounded-lg shadow-lg border border-zinc-700 whitespace-nowrap">
-              Learn about hypergeometric distribution
+              {t('calculator.help.tooltip')}
               <div className="absolute left-0 top-1/2 transform -translate-y-1/2 -translate-x-1 w-2 h-2 bg-zinc-800 border-l border-b border-zinc-700 rotate-45"></div>
             </div>
           </div>

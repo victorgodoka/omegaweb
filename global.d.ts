@@ -142,3 +142,6 @@ declare interface User {
 }
 
 declare type UserActions = | { type: 'SET_USER', payload: User } | { type: 'LOGOUT' }
+
+// Moment.js locale declarations
+declare module 'moment/locale/pt-br';

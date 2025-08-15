@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import type { LeaderboardResponse, LeaderboardPlayer } from './types';
 import { PlayerAvatar } from '@/components/PlayerAvatar';
 import { Link } from 'react-router';
 import { getTierInfo } from '@/utils/Functions';
 
 const Leaderboard: React.FC = () => {
+  const { t } = useTranslation();
   const [leaderboardData, setLeaderboardData] = useState<LeaderboardResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -17,20 +19,20 @@ const Leaderboard: React.FC = () => {
         setError(null);
 
         const response = await fetch(import.meta.env.VITE_API_URL + '/leaderboard');
-
         if (!response.ok) {
-          throw new Error('Failed to fetch leaderboard data');
+          setError(t('leaderboard_page.error_loading'));
+          return;
         }
 
         const data: LeaderboardResponse = await response.json();
-
         if (!data.success) {
-          throw new Error(data.message || 'API returned unsuccessful response');
+          setError(t('leaderboard_page.api_unsuccessful'));
+          return;
         }
 
         setLeaderboardData(data);
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'An error occurred');
+        setError(t('common.network_error'));
       } finally {
         setLoading(false);
       }
@@ -52,7 +54,7 @@ const Leaderboard: React.FC = () => {
     return (
       <div className="w-full">
         <div className="flex items-center justify-between mb-1">
-          <span className="text-green-200 text-xs">{player.wins}W - {player.loses}L</span>
+          <span className="text-green-200 text-xs">{t('leaderboard_page.win_loss', { wins: player.wins, losses: player.loses })}</span>
           <span className="text-cyan-200 text-lg font-semibold">{winRate.toFixed(2)}%</span>
         </div>
         <div className="w-full bg-zinc-700 rounded-full h-2">
@@ -100,7 +102,7 @@ const Leaderboard: React.FC = () => {
           <div className="flex items-center justify-center mb-4">
             <img
               src={tierInfo.image}
-              alt={`${tierInfo.name} Tier`}
+              alt={t('leaderboard_page.tier_alt', { tier: tierInfo.name })}
               className="w-8 h-8 mr-2"
             />
             <span className="text-zinc-300 font-medium">{tierInfo.name}</span>
@@ -108,7 +110,7 @@ const Leaderboard: React.FC = () => {
 
           <div className="bg-zinc-800/50 rounded-lg p-4 mb-4">
             <div className="text-2xl font-bold text-blue-400 mb-1">{Math.floor(player.rating)}</div>
-            <div className="text-xs text-zinc-400">Rating</div>
+            <div className="text-xs text-zinc-400">{t('leaderboard_page.rating')}</div>
           </div>
 
           <WinRateBar player={player} />
@@ -147,14 +149,14 @@ const Leaderboard: React.FC = () => {
           <div className="flex items-center space-x-2">
             <img
               src={tierInfo.image}
-              alt={`${tierInfo.name} Tier`}
+              alt={t('leaderboard_page.tier_alt', { tier: tierInfo.name })}
               className="w-6 h-6"
             />
           </div>
 
           <div className="w-20 text-center">
             <div className="text-sm font-bold text-blue-400">{Math.floor(player.rating)}</div>
-            <div className="text-xs text-zinc-400">Rating</div>
+            <div className="text-xs text-zinc-400">{t('leaderboard_page.rating')}</div>
           </div>
 
           <div className="w-full col-span-4 xl:col-span-1">
@@ -197,7 +199,7 @@ const Leaderboard: React.FC = () => {
     return (
       <div className="min-h-screen bg-zinc-900 flex items-center justify-center">
         <div className="text-center">
-          <div className="text-red-400 text-xl mb-4">⚠️ Error</div>
+          <div className="text-red-400 text-xl mb-4">⚠️ {t('leaderboard_page.error_title')}</div>
           <p className="text-zinc-300">{error}</p>
         </div>
       </div>
@@ -219,7 +221,7 @@ const Leaderboard: React.FC = () => {
                   : 'text-zinc-400 hover:text-zinc-200'
                 }`}
             >
-              TCG Format
+              {t('leaderboard_page.tcg_format')}
             </button>
             <button
               onClick={() => setSelectedFormat('OCG')}
@@ -228,7 +230,7 @@ const Leaderboard: React.FC = () => {
                   : 'text-zinc-400 hover:text-zinc-200'
                 }`}
             >
-              OCG Format
+              {t('leaderboard_page.ocg_format')}
             </button>
           </div>
         </div>
@@ -274,8 +276,8 @@ const Leaderboard: React.FC = () => {
             {/* Empty State */}
             {currentPlayers.length === 0 && !loading && (
               <div className="text-center py-12">
-                <div className="text-zinc-400 text-lg mb-2">No players found</div>
-                <p className="text-zinc-500">Check back later for leaderboard rankings</p>
+                <div className="text-zinc-400 text-lg mb-2">{t('leaderboard_page.empty_title')}</div>
+                <p className="text-zinc-500">{t('leaderboard_page.empty_subtitle')}</p>
               </div>
             )}
           </>

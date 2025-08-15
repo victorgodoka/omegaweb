@@ -2,6 +2,7 @@ import React, { useState, useMemo, useCallback } from 'react';
 import { Icon } from '@iconify/react';
 import type { CardSelectorProps, CardGroup } from '../types';
 import type { Cards } from '../../PDFGenerator/types';
+import { useTranslation } from 'react-i18next';
 
 const CardSelector: React.FC<CardSelectorProps> = ({
   cards,
@@ -10,6 +11,7 @@ const CardSelector: React.FC<CardSelectorProps> = ({
   onRemoveTargetGroup,
   onUpdateTargetGroup
 }) => {
+  const { t } = useTranslation();
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCards, setSelectedCards] = useState<string[]>([]);
   const [groupName, setGroupName] = useState('');
@@ -301,14 +303,14 @@ const CardSelector: React.FC<CardSelectorProps> = ({
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-xl font-semibold text-zinc-200 flex items-center gap-2">
             <Icon icon="mdi:target" className="text-blue-400" />
-            Target Cards
+            {t('calculator.selector.heading')}
           </h2>
           <button
             onClick={() => setShowAddGroup(!showAddGroup)}
             className="px-3 py-1 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-colors flex items-center gap-1"
           >
             <Icon icon="mdi:plus" />
-            Add Group
+            {t('calculator.selector.add_group')}
           </button>
         </div>
 
@@ -320,9 +322,12 @@ const CardSelector: React.FC<CardSelectorProps> = ({
                 <div>
                   <h3 className="font-semibold text-zinc-200">{group.name}</h3>
                   <p className="text-sm text-zinc-400">
-                    Want {group.minDesiredCount === group.maxDesiredCount 
-                      ? `${group.minDesiredCount}` 
-                      : `${group.minDesiredCount}-${group.maxDesiredCount}`} card{group.maxDesiredCount !== 1 ? 's' : ''} from this group
+                    {t('calculator.selector.want_range', {
+                      range: group.minDesiredCount === group.maxDesiredCount
+                        ? `${group.minDesiredCount}`
+                        : `${group.minDesiredCount}-${group.maxDesiredCount}`,
+                      count: group.maxDesiredCount
+                    })}
                   </p>
                 </div>
                 <div className="flex gap-2">
@@ -343,7 +348,7 @@ const CardSelector: React.FC<CardSelectorProps> = ({
               
               <div className="space-y-2">
                 <div>
-                  <h4 className="text-xs font-medium text-zinc-400 mb-1">Target Cards:</h4>
+                  <h4 className="text-xs font-medium text-zinc-400 mb-1">{t('calculator.selector.target_cards_label')}</h4>
                   <div className="flex flex-wrap gap-2">
                     {group.cards.map(instanceId => {
                       const cardId = parseInt(instanceId.split('-')[0]);
@@ -364,7 +369,7 @@ const CardSelector: React.FC<CardSelectorProps> = ({
                 
                 {group.searcherCards.length > 0 && (
                   <div>
-                    <h4 className="text-xs font-medium text-zinc-400 mb-1">Searchers:</h4>
+                    <h4 className="text-xs font-medium text-zinc-400 mb-1">{t('calculator.selector.searchers_label')}</h4>
                     <div className="flex flex-wrap gap-2">
                       {group.searcherCards.map(instanceId => {
                         const cardId = parseInt(instanceId.split('-')[0]);
@@ -395,13 +400,13 @@ const CardSelector: React.FC<CardSelectorProps> = ({
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-zinc-300 mb-2">
-                  Group Name
+                  {t('calculator.selector.form.group_name')}
                 </label>
                 <input
                   type="text"
                   value={groupName}
                   onChange={(e) => setGroupName(e.target.value)}
-                  placeholder="e.g., Hand Traps, Combo Starters"
+                  placeholder={t('calculator.selector.form.group_placeholder')}
                   className="w-full px-3 py-2 bg-zinc-600 border border-zinc-500 rounded-lg text-white placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 />
               </div>
@@ -409,7 +414,7 @@ const CardSelector: React.FC<CardSelectorProps> = ({
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-zinc-300 mb-2">
-                    Min Desired (max: {selectedCards.length})
+                    {t('calculator.selector.form.min_desired', { max: selectedCards.length })}
                   </label>
                   <input
                     type="number"
@@ -427,7 +432,7 @@ const CardSelector: React.FC<CardSelectorProps> = ({
                 
                 <div>
                   <label className="block text-sm font-medium text-zinc-300 mb-2">
-                    Max Desired (max: {selectedCards.length})
+                    {t('calculator.selector.form.max_desired', { max: selectedCards.length })}
                   </label>
                   <input
                     type="number"
@@ -446,13 +451,13 @@ const CardSelector: React.FC<CardSelectorProps> = ({
 
             <div>
               <label className="block text-sm font-medium text-zinc-300 mb-2">
-                Search Target Cards
+                {t('calculator.selector.form.search_label')}
               </label>
               <input
                 type="text"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                placeholder="Search by card name or ID..."
+                placeholder={t('calculator.selector.form.search_placeholder')}
                 className="w-full px-3 py-2 bg-zinc-600 border border-zinc-500 rounded-lg text-white placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               />
             </div>
@@ -462,7 +467,7 @@ const CardSelector: React.FC<CardSelectorProps> = ({
               <div className="divide-y divide-zinc-600">
                 {filteredCards.length === 0 ? (
                   <div className="p-4 text-center text-zinc-400">
-                    No cards found matching your search
+                    {t('calculator.selector.list.no_cards')}
                   </div>
                 ) : (
                   filteredCards.map(card => {
@@ -503,14 +508,14 @@ const CardSelector: React.FC<CardSelectorProps> = ({
                               {getCardName(card)}
                             </span>
                             <span className="text-xs bg-zinc-600 text-zinc-300 px-2 py-1 rounded-full flex-shrink-0">
-                              Copy {instanceIndex}
+                              {t('calculator.selector.copy_badge', { index: instanceIndex })}
                             </span>
                           </div>
                           <div className="text-sm text-zinc-400 mt-1">
-                            ID: {card.id}
+                            {t('calculator.selector.id_label')}: {card.id}
                             {!isAvailable && (
                               <span className="text-red-400 ml-2">
-                                • Used in another group
+                                {t('calculator.selector.used_in_another')}
                               </span>
                             )}
                           </div>
@@ -536,18 +541,18 @@ const CardSelector: React.FC<CardSelectorProps> = ({
             {/* Searcher Cards Section */}
             <div>
               <label className="block text-sm font-medium text-zinc-300 mb-2">
-                Searcher Cards (Optional)
+                {t('calculator.selector.searchers.title')}
               </label>
               <p className="text-xs text-zinc-400 mb-3">
-                Cards that can search for the target cards in this group
+                {t('calculator.selector.searchers.subtitle')}
               </p>
               
               <div className="max-h-48 overflow-y-auto border border-zinc-600 rounded-lg">
                 <div className="divide-y divide-zinc-600">
                   {filteredSearcherCards.length === 0 ? (
                     <div className="p-4 text-center text-zinc-400 text-sm">
-                      No cards available as searchers
-                      <div className="text-xs mt-1">Target cards cannot be searchers</div>
+                      {t('calculator.selector.searchers.none_available')}
+                      <div className="text-xs mt-1">{t('calculator.selector.searchers.targets_cannot_be_searchers')}</div>
                     </div>
                   ) : (
                     filteredSearcherCards.map(card => {
@@ -588,14 +593,14 @@ const CardSelector: React.FC<CardSelectorProps> = ({
                                 {getCardName(card)}
                               </span>
                               <span className="text-xs bg-zinc-600 text-zinc-300 px-2 py-1 rounded-full flex-shrink-0">
-                                Copy {instanceIndex}
+                                {t('calculator.selector.copy_badge', { index: instanceIndex })}
                               </span>
                             </div>
                             <div className="text-sm text-zinc-400 mt-1">
-                              ID: {card.id}
+                              {t('calculator.selector.id_label')}: {card.id}
                               {!isAvailable && (
                                 <span className="text-red-400 ml-2">
-                                  • Used elsewhere
+                                  {t('calculator.selector.searchers.used_elsewhere')}
                                 </span>
                               )}
                             </div>
@@ -630,7 +635,7 @@ const CardSelector: React.FC<CardSelectorProps> = ({
                         key={instanceId}
                         className="px-2 py-1 bg-orange-600 text-white text-xs rounded-full flex items-center gap-1"
                       >
-                        {getCardName(card)} (Copy {instanceIndex})
+                        {getCardName(card)} {t('calculator.selector.searchers.chip_copy', { index: instanceIndex })}
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
@@ -654,7 +659,7 @@ const CardSelector: React.FC<CardSelectorProps> = ({
                 className="w-full px-4 py-2 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
               >
                 <Icon icon={editingGroupIndex !== null ? "mdi:content-save" : "mdi:plus"} />
-                {editingGroupIndex !== null ? 'Update Group' : 'Add Group'}
+                {editingGroupIndex !== null ? t('calculator.selector.buttons.update_group') : t('calculator.selector.buttons.add_group')}
               </button>
               <button
                 onClick={() => {
@@ -669,7 +674,7 @@ const CardSelector: React.FC<CardSelectorProps> = ({
                 }}
                 className="px-4 py-2 bg-zinc-600 text-white font-medium rounded-lg hover:bg-zinc-500 focus:outline-none focus:ring-2 focus:ring-zinc-500 transition-colors"
               >
-                Cancel
+                {t('calculator.selector.buttons.cancel')}
               </button>
             </div>
           </div>

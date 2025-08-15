@@ -6,6 +6,7 @@
   "wins": "Wins",
   "losses": "Losses",
   "rounds": "Rounds",
+  "date": "Date",
   "unique_logins": "Unique Logins",
   "unique_logins_7_days": "Unique Logins (7 days)",
   "unique_logins_30_days": "Unique Logins (30 days)",
@@ -25,6 +26,45 @@
     "statistics": "Statistics",
     "pdf_decklist": "Export Decklist to PDF",
     "calculator": "Hypergeometric Calculator"
+  },
+  "home": {
+    "title": "Latest Forum Posts",
+    "subtitle": "Stay up to date with the latest discussions from Duelists Unite",
+    "error_title": "Error",
+    "comments": "{{count}} comments",
+    "views": "{{count}} views",
+    "empty_title": "No posts found",
+    "empty_subtitle": "Check back later for new forum discussions",
+    "alt_avatar": "{{username}}'s avatar"
+  },
+  "history": {
+    "title": "Tournament History",
+    "subtitle": "Browse past tournaments and their results",
+    "showing": "Showing {{from}}-{{to}} of {{total}} tournaments",
+    "error_loading": "Failed to fetch tournament data",
+    "api_unsuccessful": "API returned unsuccessful response",
+    "all_banlists": "All Banlists",
+    "from_date": "From Date",
+    "to_date": "To Date",
+    "clear_filters": "Clear Filters",
+    "tournament_number": "Tournament #{{id}}",
+    "players": "{{count}} players",
+    "completed": "Completed",
+    "view_details": "View Details",
+    "empty_title": "No tournaments found",
+    "empty_subtitle": "Check back later for tournament history"
+  },
+  "leaderboard_page": {
+    "error_title": "Error",
+    "error_loading": "Failed to fetch leaderboard data",
+    "api_unsuccessful": "API returned unsuccessful response",
+    "tcg_format": "TCG Format",
+    "ocg_format": "OCG Format",
+    "rating": "Rating",
+    "tier_alt": "{{tier}} Tier",
+    "win_loss": "{{wins}}W - {{losses}}L",
+    "empty_title": "No players found",
+    "empty_subtitle": "Check back later for leaderboard rankings"
   },
   "player": "Player",
   "w_l_d": "W-L-D",
@@ -54,8 +94,10 @@
     "brackets": "Brackets",
     "table": "Table",
     "topcut_decklists": "Topcut & Decklists",
-    "graphs": "Graphs"
+    "graphs": "Graphs",
+    "master_rule": "Master Rule"
   },
+  
   "export_deck": {
     "copy_tooltip": "Copy Omega Code to clipboard",
     "download_ydk": "Download .ydk",
@@ -112,7 +154,8 @@
     "tournament": "Tournament",
     "conversion": "Conversion",
     "deck": "deck",
-    "decks": "decks"
+    "decks": "decks",
+    "unknown": "Unknown"
   },
   "profile": {
     "my_profile": "My Profile",
@@ -219,5 +262,182 @@
     "no_valid_cards": "No valid cards found after filtering.",
     "cache_load_error": "Error loading data. Please try again later.",
     "cache_update_error": "Error updating data. Please try again later."
+  },
+  "common": {
+    "network_error": "Network error. Please try again.",
+    "saving": "Saving...",
+    "previous": "Previous",
+    "next": "Next"
+  },
+  "auth": {
+    "logged_in_as": "Logged in as: {{userId}}",
+    "logout": "Logout",
+    "not_logged_in": "Not logged in"
+  },
+  "calculator": {
+    "deck_code": "Deck Code",
+    "deck_code_placeholder": "Paste your deck code here...",
+    "deck_code_required": "Deck code is required",
+    "invalid_deck_code": "Invalid deck code or failed to load deck",
+    "error_validating_deck_code": "Error validating deck code",
+    "deck_loaded": "Deck loaded successfully ({{deckSize}} cards in main deck)",
+    "sample_size": "Sample Size",
+    "cards_to_draw": "Cards to draw",
+    "probability_results": "Probability Results",
+    "calculate": "Calculate",
+    "create_share_title": "Create shareable link (requires login)",
+    "copy_link": "Copy Link",
+    "link_copied": "Link copied to clipboard!",
+    "add_target_cards_prompt": "Add target cards to calculate probabilities",
+    "help": {
+      "aria_label": "Learn about hypergeometric distribution",
+      "tooltip": "Learn about hypergeometric distribution"
+    },
+    "results": {
+      "none": "No results to display",
+      "copies_in_deck": "{{count}} copies in deck",
+      "exactly_n": "Exactly {{count}} card{{count !== 1 ? 's' : ''}} in {{handSize}} cards:",
+      "range_n": "{{min}}-{{max}} cards in {{handSize}} cards:",
+      "at_least_n": "At least {{count}} card{{count !== 1 ? 's' : ''}} in {{handSize}} cards:",
+      "with_searchers": "With searchers:",
+      "at_least_including_searchers": "At least {{count}} (including searchers)",
+      "improvement": "+{{amount}} improvement"
+    },
+    "quick_odds": {
+      "title": "Quick Odds",
+      "destiny": "Destiny Draw (1):",
+      "greed": "Greed Draw (2):",
+      "prosperity_3": "Prosperity 3:",
+      "prosperity_6": "Prosperity 6:",
+      "desires": "Desires (banish 10, draw 2):"
+    },
+    "modal": {
+      "title": "Understanding Hypergeometric Distribution",
+      "intro": {
+        "title": "What is Hypergeometric Distribution?",
+        "text": "The hypergeometric distribution calculates the probability of drawing a specific number of 'success' cards from a deck without replacement. It's perfect for Yu-Gi-Oh! because once you draw a card, it's no longer available in your deck."
+      },
+      "how_it_works": {
+        "title": "How It Works",
+        "formula_title": "The Formula",
+        "N": "Total deck size (usually 40)",
+        "K": "Number of target cards in deck",
+        "n": "Cards drawn (hand size)",
+        "k": "Target cards you want to draw",
+        "example_title": "Example Calculation",
+        "example_desc": "Drawing exactly 1 Ash Blossom from 3 copies in a 40-card deck with 5-card hand:"
+      },
+      "key_concepts": {
+        "title": "Key Concepts",
+        "exact_title": "Exactly N Cards",
+        "exact_desc": "Probability of drawing exactly the specified number of target cards.",
+        "atleast_title": "At Least N Cards",
+        "atleast_desc": "Probability of drawing the specified number or more target cards.",
+        "targets_title": "Target Cards",
+        "targets_desc": "The specific cards you want to draw (e.g., combo pieces, hand traps).",
+        "searchers_title": "Searcher Cards",
+        "searchers_desc": "Cards that can find your targets, effectively increasing your success rate."
+      },
+      "quick_odds": {
+        "title": "Quick Odds (what the shortcuts mean)",
+        "destiny": {
+          "title": "Destiny Draw (draw 1 after opening)",
+          "desc": "Treat as drawing the first h+1 cards of the deck.",
+          "note": "If your group requires ≥2 cards, this shortcut is not applicable."
+        },
+        "greed": {
+          "title": "Pot of Greed (draw 2 after opening)",
+          "desc": "Treat as drawing the first h+2 cards of the deck."
+        },
+        "prosperity": {
+          "title": "Pot of Prosperity (m ∈ {3, 6})",
+          "desc": "Complement rule: fail both steps (none in opening, none in m excavated), then subtract from 1.",
+          "note": "This matches ‘no replacement’ across stages (open h, then check top m of the remaining deck)."
+        },
+        "desires": {
+          "title": "Pot of Desires (banish 10, then draw 2)",
+          "desc": "Complement rule across stages; the marginal result equals drawing the first h+2 cards."
+        }
+      },
+      "how_to_use": {
+        "title": "How to Use This Calculator",
+        "step1_title": "1. Load Your Deck",
+        "step1_desc": "Paste your deck code and validate it to load your deck list. Only main deck cards are used for calculations.",
+        "step2_title": "2. Create Card Groups",
+        "step2_desc": "Group related cards together (e.g., 'Hand Traps', 'Combo Starters') and set how many you want to draw.",
+        "step3_title": "3. Analyze Results",
+        "step3_desc": "View probability breakdowns and optimize your deck ratios based on the calculations."
+      },
+      "advanced": {
+        "title": "Advanced Features",
+        "groups_title": "Card Groups & Desired Counts",
+        "groups_desc": "Create groups of related cards and specify how many you want to see. For example:",
+        "examples": {
+          "hand_traps": { "title": "Hand Traps", "desc": "Want to see at least 1 from Ash Blossom, Maxx 'C', etc." },
+          "combo_starters": { "title": "Combo Starters", "desc": "Want exactly 1-2 combo pieces in opening hand" },
+          "engine_cards": { "title": "Engine Cards", "desc": "Want to avoid drawing too many engine pieces" }
+        },
+        "searchers_title": "Searcher Integration",
+        "searchers_desc": "Assign searcher cards to specific groups to get more accurate probabilities. The calculator considers that drawing a searcher is almost as good as drawing the target card itself."
+      },
+      "tips": {
+        "title": "Pro Tips",
+        "item1": "Use realistic hand sizes (5 for going first, 6 for going second)",
+        "item2": "Group cards by function rather than by name for better insights",
+        "item3": "Consider searchers when calculating combo piece probabilities",
+        "item4": "Save and share your configurations to compare different deck builds"
+      },
+      "footer": {
+        "dont_show": "Don't show this again for 24 hours",
+        "got_it": "Got it!"
+      }
+    },
+    "selector": {
+      "heading": "Target Cards",
+      "add_group": "Add Group",
+      "want_range": "Want {{range}} card{{count !== 1 ? 's' : ''}} from this group",
+      "target_cards_label": "Target Cards:",
+      "searchers_label": "Searchers:",
+      "form": {
+        "group_name": "Group Name",
+        "group_placeholder": "e.g., Hand Traps, Combo Starters",
+        "min_desired": "Min Desired (max: {{max}})",
+        "max_desired": "Max Desired (max: {{max}})",
+        "search_label": "Search Target Cards",
+        "search_placeholder": "Search by card name or ID..."
+      },
+      "list": {
+        "no_cards": "No cards found matching your search",
+        "copy_badge": "Copy {{index}}",
+        "id_label": "ID",
+        "used_in_another": "• Used in another group"
+      },
+      "searchers": {
+        "title": "Searcher Cards (Optional)",
+        "subtitle": "Cards that can search for the target cards in this group",
+        "none_available": "No cards available as searchers",
+        "targets_cannot_be_searchers": "Target cards cannot be searchers",
+        "used_elsewhere": "• Used elsewhere",
+        "chip_copy": "(Copy {{index}})"
+      },
+      "buttons": {
+        "update_group": "Update Group",
+        "add_group": "Add Group",
+        "cancel": "Cancel"
+      }
+    },
+    "share": {
+      "button": "Share",
+      "load_deck_and_add_groups": "Please load a deck and add target groups before sharing",
+      "created": "Shareable link created!",
+      "failed": "Failed to create shareable link",
+      "load_failed": "Failed to load shared deck",
+      "not_found": "Shared configuration not found",
+      "loading_error": "Network error while loading shared configuration",
+      "ensure_valid_deck_and_group": "Please ensure you have a valid deck and at least one target card group",
+      "save_failed": "Failed to save configuration",
+      "save_and_share": "Save & Share",
+      "login_to_save_and_share": "Login to Save & Share"
+    }
   }
 }

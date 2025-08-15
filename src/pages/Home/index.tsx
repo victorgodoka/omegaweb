@@ -1,8 +1,10 @@
 import { useState, useEffect } from 'react';
 import { api } from '@/utils/Api';
 import type { DiscourseLatestPostsAPI, DiscourseCategoryAPI, LatestPost, Category } from './types';
+import { useTranslation } from 'react-i18next';
 
 const Home: React.FC = () => {
+  const { t, i18n } = useTranslation();
   const [posts, setPosts] = useState<LatestPost[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
@@ -48,7 +50,9 @@ const Home: React.FC = () => {
 
   const formatDate = (dateString: string): string => {
     const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', {
+    // Choose locale from current i18n language
+    const locale = i18n.language?.startsWith('pt') ? 'pt-BR' : 'en-US';
+    return date.toLocaleDateString(locale, {
       year: 'numeric',
       month: 'short',
       day: 'numeric',
@@ -98,8 +102,8 @@ const Home: React.FC = () => {
         <div className="container mx-auto px-4 py-8">
           {/* Header */}
           <div className="mb-8">
-            <h1 className="text-3xl font-bold text-blue-300 mb-2">Latest Forum Posts</h1>
-            <p className="text-zinc-400">Stay up to date with the latest discussions from Duelists Unite</p>
+            <h1 className="text-3xl font-bold text-blue-300 mb-2">{t('home.title')}</h1>
+            <p className="text-zinc-400">{t('home.subtitle')}</p>
           </div>
 
           {/* Skeleton Grid */}
@@ -117,7 +121,7 @@ const Home: React.FC = () => {
     return (
       <div className="min-h-screen bg-zinc-900 flex items-center justify-center mt-12">
         <div className="text-center">
-          <div className="text-red-400 text-xl mb-4">⚠️ Error</div>
+          <div className="text-red-400 text-xl mb-4">⚠️ {t('home.error_title')}</div>
           <p className="text-zinc-300">{error}</p>
         </div>
       </div>
@@ -129,8 +133,8 @@ const Home: React.FC = () => {
       <div className="container mx-auto px-4 py-8">
         {/* Header */}
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-blue-300 mb-2">Latest Forum Posts</h1>
-          <p className="text-zinc-400">Stay up to date with the latest discussions from Duelists Unite</p>
+          <h1 className="text-3xl font-bold text-blue-300 mb-2">{t('home.title')}</h1>
+          <p className="text-zinc-400">{t('home.subtitle')}</p>
         </div>
 
         {/* Posts Grid */}
@@ -177,7 +181,7 @@ const Home: React.FC = () => {
                   <div className="w-full flex items-center mb-4">
                     <img
                       src={getAvatarUrl(post.avatar_template)}
-                      alt={`${post.username}'s avatar`}
+                      alt={t('home.alt_avatar', { username: post.username })}
                       className="w-10 h-10 rounded-full mr-3 border-2 border-zinc-600"
                     />
                     <div className="flex-1 min-w-0">
@@ -192,14 +196,14 @@ const Home: React.FC = () => {
                       <svg className="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
                         <path fillRule="evenodd" d="M18 10c0 3.866-3.582 7-8 7a8.841 8.841 0 01-4.083-.98L2 17l1.338-3.123C2.493 12.767 2 11.434 2 10c0-3.866 3.582-7 8-7s8 3.134 8 7zM7 9H5v2h2V9zm8 0h-2v2h2V9zM9 9h2v2H9V9z" clipRule="evenodd" />
                       </svg>
-                      {post.reply_count} comments
+                      {t('home.comments', { count: post.reply_count })}
                     </span>
                     <span className="flex items-center">
                       <svg className="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
                         <path d="M10 12a2 2 0 100-4 2 2 0 000 4z" />
                         <path fillRule="evenodd" d="M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.064 7-9.542 7S1.732 14.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clipRule="evenodd" />
                       </svg>
-                      {post.reads} views
+                      {t('home.views', { count: post.reads })}
                     </span>
                   </div>
                 </div>
@@ -211,8 +215,8 @@ const Home: React.FC = () => {
         {/* Empty State */}
         {posts.length === 0 && (
           <div className="text-center py-12">
-            <div className="text-zinc-400 text-lg mb-2">No posts found</div>
-            <p className="text-zinc-500">Check back later for new forum discussions</p>
+            <div className="text-zinc-400 text-lg mb-2">{t('home.empty_title')}</div>
+            <p className="text-zinc-500">{t('home.empty_subtitle')}</p>
           </div>
         )}
       </div>

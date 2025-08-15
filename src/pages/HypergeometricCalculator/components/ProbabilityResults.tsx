@@ -1,11 +1,13 @@
 import React from 'react';
 import { Icon } from '@iconify/react';
 import type { ProbabilityResultsProps } from '../types';
+import { useTranslation } from 'react-i18next';
 
 const ProbabilityResults: React.FC<ProbabilityResultsProps> = ({
   results,
   handSize
 }) => {
+  const { t } = useTranslation();
   // Format percentage with 2 decimal places, rounded down
   const formatPercentage = (probability: number): string => {
     const percentage = probability * 100;
@@ -35,7 +37,7 @@ const ProbabilityResults: React.FC<ProbabilityResultsProps> = ({
     return (
       <div className="text-center py-8 text-zinc-400">
         <Icon icon="mdi:chart-line" className="text-4xl mb-2 mx-auto" />
-        <p>No results to display</p>
+        <p>{t('calculator.results.none')}</p>
       </div>
     );
   }
@@ -49,7 +51,7 @@ const ProbabilityResults: React.FC<ProbabilityResultsProps> = ({
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-semibold text-zinc-200">{result.groupName}</h3>
               <span className="text-sm text-zinc-400">
-                {result.totalCopies} copies in deck
+                {t('calculator.results.copies_in_deck', { count: result.totalCopies })}
               </span>
             </div>
 
@@ -60,8 +62,8 @@ const ProbabilityResults: React.FC<ProbabilityResultsProps> = ({
                 <div className="flex items-center justify-between mb-2">
                   <span className="text-zinc-300 font-medium">
                     {result.minDesiredCount === result.maxDesiredCount
-                      ? `Exactly ${result.minDesiredCount}`
-                      : `${result.minDesiredCount}-${result.maxDesiredCount}`} card{result.maxDesiredCount !== 1 ? 's' : ''} in {handSize} cards:
+                      ? t('calculator.results.exactly_n', { count: result.minDesiredCount, handSize })
+                      : t('calculator.results.range_n', { min: result.minDesiredCount, max: result.maxDesiredCount, handSize })}
                   </span>
                   <span className={`font-bold text-lg ${getProbabilityColor(result.inDesiredRange)}`}>
                     {formatPercentage(result.inDesiredRange)}
@@ -82,7 +84,7 @@ const ProbabilityResults: React.FC<ProbabilityResultsProps> = ({
                 <div>
                   <div className="flex items-center justify-between mb-2">
                     <span className="text-zinc-300 font-medium">
-                      At least {result.minDesiredCount} card{result.minDesiredCount !== 1 ? 's' : ''} in {handSize} cards:
+                      {t('calculator.results.at_least_n', { count: result.minDesiredCount, handSize })}
                     </span>
                     <span className={`font-bold text-lg ${getProbabilityColor(result.atLeastMin)}`}>
                       {formatPercentage(result.atLeastMin)}
@@ -104,11 +106,11 @@ const ProbabilityResults: React.FC<ProbabilityResultsProps> = ({
             <div className="mb-4 p-3 bg-zinc-800 rounded-lg border border-zinc-700">
               <div className="flex items-center gap-2 mb-3">
                 <Icon icon="mdi:flash" className="text-yellow-400" />
-                <span className="text-zinc-300 font-medium">Quick Odds</span>
+                <span className="text-zinc-300 font-medium">{t('calculator.quick_odds.title')}</span>
               </div>
               <div className="grid grid-cols-2 gap-3 text-sm">
                 <div className="flex items-center justify-between">
-                  <span className="text-zinc-400">Destiny Draw (1):</span>
+                  <span className="text-zinc-400">{t('calculator.quick_odds.destiny')}</span>
                   {result.minDesiredCount >= 2 ? (
                     <span className="text-zinc-500">—</span>
                   ) : (
@@ -116,11 +118,11 @@ const ProbabilityResults: React.FC<ProbabilityResultsProps> = ({
                   )}
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="text-zinc-400">Greed Draw (2):</span>
+                  <span className="text-zinc-400">{t('calculator.quick_odds.greed')}</span>
                   <span className={`font-semibold ${getProbabilityColor(result.greedDraw)}`}>{formatPercentage(result.greedDraw)}</span>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="text-zinc-400">Prosperity 3:</span>
+                  <span className="text-zinc-400">{t('calculator.quick_odds.prosperity_3')}</span>
                   {result.minDesiredCount >= 2 ? (
                     <span className="text-zinc-500">—</span>
                   ) : (
@@ -128,7 +130,7 @@ const ProbabilityResults: React.FC<ProbabilityResultsProps> = ({
                   )}
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="text-zinc-400">Prosperity 6:</span>
+                  <span className="text-zinc-400">{t('calculator.quick_odds.prosperity_6')}</span>
                   {result.minDesiredCount >= 2 ? (
                     <span className="text-zinc-500">—</span>
                   ) : (
@@ -136,7 +138,7 @@ const ProbabilityResults: React.FC<ProbabilityResultsProps> = ({
                   )}
                 </div>
                 <div className="flex items-center justify-between col-span-2">
-                  <span className="text-zinc-400">Desires (banish 10, draw 2):</span>
+                  <span className="text-zinc-400">{t('calculator.quick_odds.desires')}</span>
                   <span className={`font-semibold ${getProbabilityColor(result.desiresDraw)}`}>{formatPercentage(result.desiresDraw)}</span>
                 </div>
               </div>
@@ -147,11 +149,11 @@ const ProbabilityResults: React.FC<ProbabilityResultsProps> = ({
               <div className="mb-4 p-3 bg-zinc-800 rounded-lg border border-orange-500/30">
                 <div className="flex items-center gap-2 mb-2">
                   <Icon icon="mdi:magnify" className="text-orange-400" />
-                  <span className="text-zinc-300 font-medium">With searchers:</span>
+                  <span className="text-zinc-300 font-medium">{t('calculator.results.with_searchers')}</span>
                 </div>
                 <div className="flex items-center justify-between mb-2">
                   <span className="text-zinc-400 text-sm">
-                    At least {result.minDesiredCount} (including searchers)
+                    {t('calculator.results.at_least_including_searchers', { count: result.minDesiredCount })}
                   </span>
                   <span className={`font-bold text-lg ${getProbabilityColor(result.withSearchers)}`}>
                     {formatPercentage(result.withSearchers)}
@@ -170,7 +172,7 @@ const ProbabilityResults: React.FC<ProbabilityResultsProps> = ({
                 {result.withSearchers > result.atLeastMin && (
                   <div className="mt-2 text-xs text-green-400 flex items-center gap-1">
                     <Icon icon="mdi:trending-up" />
-                    +{formatPercentage(result.withSearchers - result.atLeastMin)} improvement
+                    {t('calculator.results.improvement', { amount: formatPercentage(result.withSearchers - result.atLeastMin) })}
                   </div>
                 )}
               </div>

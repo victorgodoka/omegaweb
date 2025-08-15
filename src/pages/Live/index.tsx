@@ -7,6 +7,7 @@ import { useCache } from "@/contexts/CacheContext";
 import { fetchApi } from "@/utils/Api";
 import { loadDecklists } from "@/utils/Cards";
 import moment from "moment";
+import 'moment/locale/pt-br';
 import { tabsTheme } from "@/utils/Themes";
 import { getTopCut } from "@/utils/Functions";
 import { Details } from "@/components/Details";
@@ -21,7 +22,7 @@ import type { TournamentData, Player, Round, Tournament, Table } from "./types";
 
 const Live = () => {
   const { id: tournamentId } = useParams<"id">();
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { cardStats } = useCache();
   const [tournament, setTournament] = useState<Tournament | null>(null);
   const [players, setPlayers] = useState<Player[]>([]);
@@ -55,6 +56,12 @@ const Live = () => {
   };
 
   useEffect(() => {
+    // Sync Moment.js locale with current i18n language
+    // Map common language codes to moment locales
+    const lang = i18n.language?.toLowerCase() || 'en';
+    const momentLocale = lang.startsWith('pt') ? 'pt-br' : 'en';
+    moment.locale(momentLocale);
+
     let isMounted = true;
     const updateData = async () => {
       if (!isMounted) return;
@@ -67,7 +74,7 @@ const Live = () => {
       }
     };
     updateData();
-  }, [tournamentId]);
+  }, [tournamentId, i18n.language]);
 
   // Memoize tiebreakers for leaderboard
   const tiebreakers = useMemo(() => {
@@ -101,7 +108,13 @@ const Live = () => {
           <div className="px-8 md:px-0">
             <div className="py-8 border-b border-gray-600/35 flex flex-col items-center justify-center">
               <h1 className="nunito-sans text-white text-4xl">{t('live.tournament_number', { id: tournament.id })}</h1>
-              <p className="text-gray-400 text-center">{moment.utc(tournament.starttime).format("LLL Z")}</p>
+              <p className="text-gray-400 text-center">
+                {(() => {
+                  const lang = i18n.language?.toLowerCase() || 'en';
+                  const mLoc = lang.startsWith('pt') ? 'pt-br' : 'en';
+                  return moment.utc(tournament.starttime).locale(mLoc).format("LLL Z");
+                })()}
+              </p>
               <div className="flex my-2">
                 <AvatarGroup>
                   {players.slice(0, 5).map(p => (

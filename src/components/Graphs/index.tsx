@@ -54,7 +54,7 @@ const Graphs = ({ deckLists, players, rounds, table }: GraphsProps) => {
     // Count deck archetypes for all tournament and get representative card IDs
     const allDeckCounts: Record<string, { count: number; cardId?: number }> = {}
     deckLists.forEach(deck => {
-      const mainArchetype = deck.set?.[0]?.archetype || 'Unknown'
+      const mainArchetype = deck.set?.[0]?.archetype || t('graphs.unknown')
       const cardId = deck.set?.[0]?.ids?.[0]
 
       if (!allDeckCounts[mainArchetype]) {
@@ -69,7 +69,7 @@ const Graphs = ({ deckLists, players, rounds, table }: GraphsProps) => {
     deckLists
       .filter(deck => topCutPlayerIds.includes(deck.id))
       .forEach(deck => {
-        const mainArchetype = deck.set?.[0]?.archetype || 'Unknown'
+        const mainArchetype = deck.set?.[0]?.archetype || t('graphs.unknown')
         const cardId = deck.set?.[0]?.ids?.[0]
 
         if (!topCutDeckCounts[mainArchetype]) {

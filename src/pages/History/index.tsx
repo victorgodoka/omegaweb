@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import type { PastTournaments, Tournament } from './types';
 import { Link } from 'react-router';
+import { useTranslation } from 'react-i18next';
 
 const History: React.FC = () => {
   const [tournaments, setTournaments] = useState<Tournament[]>([]);
@@ -15,6 +16,8 @@ const History: React.FC = () => {
   const [dateTo, setDateTo] = useState<string>('');
   const tournamentsPerPage = 50;
 
+  const { t, i18n } = useTranslation();
+
   useEffect(() => {
     const fetchTournaments = async () => {
       try {
@@ -24,13 +27,13 @@ const History: React.FC = () => {
         const response = await fetch(import.meta.env.VITE_API_URL + '/tournaments');
         
         if (!response.ok) {
-          throw new Error('Failed to fetch tournament data');
+          throw new Error(t('history.error_loading'));
         }
 
         const data: PastTournaments = await response.json();
         
         if (!data.success) {
-          throw new Error('API returned unsuccessful response');
+          throw new Error(t('history.api_unsuccessful'));
         }
 
         setTournaments(data.data);
@@ -41,7 +44,7 @@ const History: React.FC = () => {
         const banlists = [...new Set(data.data.map(tournament => tournament.banlist))];
         setAvailableBanlists(banlists);
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'An error occurred');
+        setError(err instanceof Error ? err.message : t('common.network_error'));
       } finally {
         setLoading(false);
       }
@@ -74,7 +77,7 @@ const History: React.FC = () => {
 
   const formatDate = (dateString: string): string => {
     const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', {
+    return date.toLocaleDateString(i18n.language, {
       year: 'numeric',
       month: 'short',
       day: 'numeric',
@@ -160,7 +163,7 @@ const History: React.FC = () => {
           disabled={currentPage === 1}
           className="px-3 py-2 text-sm font-medium text-zinc-300 bg-zinc-800 border border-zinc-600 rounded-md hover:bg-zinc-700 disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          Previous
+          {t('common.previous')}
         </button>
         
         {getPageNumbers().map((page, index) => (
@@ -187,7 +190,7 @@ const History: React.FC = () => {
           disabled={currentPage === totalPages}
           className="px-3 py-2 text-sm font-medium text-zinc-300 bg-zinc-800 border border-zinc-600 rounded-md hover:bg-zinc-700 disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          Next
+          {t('common.next')}
         </button>
       </div>
     );
@@ -197,7 +200,7 @@ const History: React.FC = () => {
     return (
       <div className="min-h-screen bg-zinc-900 flex items-center justify-center">
         <div className="text-center">
-          <div className="text-red-400 text-xl mb-4">⚠️ Error</div>
+          <div className="text-red-400 text-xl mb-4">⚠️ {t('error')}</div>
           <p className="text-zinc-300">{error}</p>
         </div>
       </div>
@@ -209,11 +212,15 @@ const History: React.FC = () => {
       <div className="container mx-auto px-4 py-8">
         {/* Header */}
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-blue-300 mb-2">Tournament History</h1>
-          <p className="text-zinc-400">Browse past tournaments and their results</p>
+          <h1 className="text-3xl font-bold text-blue-300 mb-2">{t('history.title')}</h1>
+          <p className="text-zinc-400">{t('history.subtitle')}</p>
           {!loading && (
             <p className="text-zinc-500 text-sm mt-2">
-              Showing {((currentPage - 1) * tournamentsPerPage) + 1}-{Math.min(currentPage * tournamentsPerPage, totalTournaments)} of {totalTournaments} tournaments
+              {t('history.showing', {
+                from: ((currentPage - 1) * tournamentsPerPage) + 1,
+                to: Math.min(currentPage * tournamentsPerPage, totalTournaments),
+                total: totalTournaments
+              })}
             </p>
           )}
         </div>
@@ -223,14 +230,14 @@ const History: React.FC = () => {
           <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4 items-end">
             <div>
               <label className="block text-sm font-medium text-zinc-300 mb-2">
-                Banlist
+                {t('banlist')}
               </label>
               <select
                 value={selectedBanlist}
                 onChange={(e) => setSelectedBanlist(e.target.value)}
                 className="w-full px-3 py-2 bg-zinc-700 border border-zinc-600 rounded-md text-zinc-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               >
-                <option value="">All Banlists</option>
+                <option value="">{t('history.all_banlists')}</option>
                 {availableBanlists.map((banlist) => (
                   <option key={banlist} value={banlist}>
                     {banlist}
@@ -241,7 +248,7 @@ const History: React.FC = () => {
 
             <div>
               <label className="block text-sm font-medium text-zinc-300 mb-2">
-                From Date
+                {t('history.from_date')}
               </label>
               <input
                 type="date"
@@ -253,7 +260,7 @@ const History: React.FC = () => {
 
             <div>
               <label className="block text-sm font-medium text-zinc-300 mb-2">
-                To Date
+                {t('history.to_date')}
               </label>
               <input
                 type="date"
@@ -268,7 +275,7 @@ const History: React.FC = () => {
                 onClick={clearFilters}
                 className="w-full px-4 py-2 bg-zinc-600 text-zinc-100 text-sm font-medium rounded-md hover:bg-zinc-500 transition-colors duration-200"
               >
-                Clear Filters
+                {t('history.clear_filters')}
               </button>
             </div>
           </div>
@@ -287,7 +294,7 @@ const History: React.FC = () => {
                 className="bg-zinc-800 rounded-lg border border-zinc-700 p-6 hover:border-blue-400 transition-colors duration-200 flex flex-col"
               >
                 <h3 className="text-lg font-semibold text-zinc-100 mb-3">
-                  Tournament #{tournament.id}
+                  {t('history.tournament_number', { id: tournament.id })}
                 </h3>
                 
                 <div className="flex flex-col space-y-2 text-sm text-zinc-400 mb-4 flex-1">
@@ -309,12 +316,12 @@ const History: React.FC = () => {
                     <svg className="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
                       <path d="M13 6a3 3 0 11-6 0 3 3 0 016 0zM18 8a2 2 0 11-4 0 2 2 0 014 0zM14 15a4 4 0 00-8 0v3h8v-3z" />
                     </svg>
-                    {tournament.players} players
+                    {t('history.players', { count: tournament.players })}
                   </span>
 
                   {tournament.endtime && (
                     <div className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-900 text-green-300 border border-green-700 w-fit">
-                      Completed
+                      {t('history.completed')}
                     </div>
                   )}
                 </div>
@@ -323,7 +330,7 @@ const History: React.FC = () => {
                   to={`/tournament/${tournament.id}`}
                   className="w-full px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700 transition-colors duration-200 text-center mt-auto"
                 >
-                  View Details
+                  {t('history.view_details')}
                 </Link>
               </div>
             ))
@@ -336,8 +343,8 @@ const History: React.FC = () => {
         {/* Empty State */}
         {!loading && tournaments.length === 0 && (
           <div className="text-center py-12">
-            <div className="text-zinc-400 text-lg mb-2">No tournaments found</div>
-            <p className="text-zinc-500">Check back later for tournament history</p>
+            <div className="text-zinc-400 text-lg mb-2">{t('history.empty_title')}</div>
+            <p className="text-zinc-500">{t('history.empty_subtitle')}</p>
           </div>
         )}
       </div>

@@ -6,6 +6,7 @@
   "wins": "Vitórias",
   "losses": "Derrotas",
   "rounds": "Rodadas",
+  "date": "Data",
   "unique_logins": "Logins Únicos",
   "unique_logins_7_days": "Logins Únicos (7 dias)",
   "unique_logins_30_days": "Logins Únicos (30 dias)",
@@ -25,6 +26,45 @@
     "statistics": "Estatísticas",
     "pdf_decklist": "Exportar Decklist para PDF",
     "calculator": "Calculadora Hipergeométrica"
+  },
+  "leaderboard_page": {
+    "error_title": "Erro",
+    "error_loading": "Falha ao buscar dados da classificação",
+    "api_unsuccessful": "API retornou resposta sem sucesso",
+    "tcg_format": "Formato TCG",
+    "ocg_format": "Formato OCG",
+    "rating": "Avaliação",
+    "tier_alt": "Tier {{tier}}",
+    "win_loss": "{{wins}}V - {{losses}}D",
+    "empty_title": "Nenhum jogador encontrado",
+    "empty_subtitle": "Volte mais tarde para ver a classificação"
+  },
+  "home": {
+    "title": "Últimas Postagens do Fórum",
+    "subtitle": "Fique por dentro das discussões mais recentes do Duelists Unite",
+    "error_title": "Erro",
+    "comments": "{{count}} comentários",
+    "views": "{{count}} visualizações",
+    "empty_title": "Nenhuma postagem encontrada",
+    "empty_subtitle": "Volte mais tarde para novas discussões do fórum",
+    "alt_avatar": "Avatar de {{username}}"
+  },
+  "history": {
+    "title": "Histórico de Torneios",
+    "subtitle": "Navegue por torneios passados e seus resultados",
+    "showing": "Mostrando {{from}}-{{to}} de {{total}} torneios",
+    "error_loading": "Falha ao buscar dados dos torneios",
+    "api_unsuccessful": "API retornou resposta sem sucesso",
+    "all_banlists": "Todas as Banlists",
+    "from_date": "Data Inicial",
+    "to_date": "Data Final",
+    "clear_filters": "Limpar Filtros",
+    "tournament_number": "Torneio #{{id}}",
+    "players": "{{count}} jogadores",
+    "completed": "Concluído",
+    "view_details": "Ver Detalhes",
+    "empty_title": "Nenhum torneio encontrado",
+    "empty_subtitle": "Volte mais tarde para o histórico de torneios"
   },
   "player": "Jogador",
   "w_l_d": "V-D-E",
@@ -54,7 +94,8 @@
     "brackets": "Chaves",
     "table": "Tabela",
     "topcut_decklists": "Topcut & Decklists",
-    "graphs": "Gráficos"
+    "graphs": "Gráficos",
+    "master_rule": "Master Rule"
   },
   "export_deck": {
     "copy_tooltip": "Copiar código Omega para a área de transferência",
@@ -112,7 +153,8 @@
     "tournament": "Torneio",
     "conversion": "Conversão",
     "deck": "deck",
-    "decks": "decks"
+    "decks": "decks",
+    "unknown": "Desconhecido"
   },
   "profile": {
     "my_profile": "Meu Perfil",
@@ -219,5 +261,182 @@
     "no_valid_cards": "Nenhum card válido foi encontrado após a filtragem.",
     "cache_load_error": "Erro ao carregar os dados. Tente novamente mais tarde.",
     "cache_update_error": "Erro ao atualizar os dados. Tente novamente mais tarde."
+  },
+  "common": {
+    "network_error": "Erro de rede. Tente novamente.",
+    "saving": "Salvando...",
+    "previous": "Anterior",
+    "next": "Próximo"
+  },
+  "auth": {
+    "logged_in_as": "Conectado como: {{userId}}",
+    "logout": "Sair",
+    "not_logged_in": "Não está conectado"
+  },
+  "calculator": {
+    "deck_code": "Código do Deck",
+    "deck_code_placeholder": "Cole o código do seu deck aqui...",
+    "deck_code_required": "O código do deck é obrigatório",
+    "invalid_deck_code": "Código do deck inválido ou falha ao carregar o deck",
+    "error_validating_deck_code": "Erro ao validar o código do deck",
+    "deck_loaded": "Deck carregado com sucesso ({{deckSize}} cartas no deck principal)",
+    "sample_size": "Tamanho da Amostra",
+    "cards_to_draw": "Cartas a comprar",
+    "probability_results": "Resultados de Probabilidade",
+    "calculate": "Calcular",
+    "create_share_title": "Criar link compartilhável (requer login)",
+    "copy_link": "Copiar Link",
+    "link_copied": "Link copiado para a área de transferência!",
+    "add_target_cards_prompt": "Adicione grupos de cartas alvo para calcular as probabilidades",
+    "help": {
+      "aria_label": "Aprenda sobre a distribuição hipergeométrica",
+      "tooltip": "Aprenda sobre a distribuição hipergeométrica"
+    },
+    "results": {
+      "none": "Nenhum resultado para exibir",
+      "copies_in_deck": "{{count}} cópias no deck",
+      "exactly_n": "Exatamente {{count}} carta{{count !== 1 ? 's' : ''}} em {{handSize}} cartas:",
+      "range_n": "{{min}}-{{max}} cartas em {{handSize}} cartas:",
+      "at_least_n": "Pelo menos {{count}} carta{{count !== 1 ? 's' : ''}} em {{handSize}} cartas:",
+      "with_searchers": "Com buscadoras:",
+      "at_least_including_searchers": "Pelo menos {{count}} (incluindo buscadoras)",
+      "improvement": "+{{amount}} de melhoria"
+    },
+    "quick_odds": {
+      "title": "Probabilidades Rápidas",
+      "destiny": "Sorte do Destino (1):",
+      "greed": "Cálice da Ganância (2):",
+      "prosperity_3": "Prosperidade 3:",
+      "prosperity_6": "Prosperidade 6:",
+      "desires": "Desejos (banir 10, comprar 2):"
+    },
+    "modal": {
+      "title": "Entendendo a Distribuição Hipergeométrica",
+      "intro": {
+        "title": "O que é a Distribuição Hipergeométrica?",
+        "text": "A distribuição hipergeométrica calcula a probabilidade de comprar um número específico de cartas 'de sucesso' de um deck sem reposição. É perfeita para Yu-Gi-Oh!, pois uma vez que você compra uma carta, ela não está mais disponível no deck."
+      },
+      "how_it_works": {
+        "title": "Como Funciona",
+        "formula_title": "A Fórmula",
+        "N": "Tamanho total do deck (geralmente 40)",
+        "K": "Número de cartas alvo no deck",
+        "n": "Cartas compradas (tamanho da mão)",
+        "k": "Cartas alvo que você deseja comprar",
+        "example_title": "Exemplo de Cálculo",
+        "example_desc": "Comprar exatamente 1 Ash Blossom de 3 cópias em um deck de 40 cartas com mão de 5 cartas:"
+      },
+      "key_concepts": {
+        "title": "Conceitos‑Chave",
+        "exact_title": "Exatamente N Cartas",
+        "exact_desc": "Probabilidade de comprar exatamente o número especificado de cartas alvo.",
+        "atleast_title": "Pelo Menos N Cartas",
+        "atleast_desc": "Probabilidade de comprar o número especificado de cartas alvo ou mais.",
+        "targets_title": "Cartas Alvo",
+        "targets_desc": "As cartas específicas que você deseja comprar (ex.: peças de combo, hand traps).",
+        "searchers_title": "Cartas Buscadoras",
+        "searchers_desc": "Cartas que podem encontrar suas cartas alvo, aumentando efetivamente sua taxa de sucesso."
+      },
+      "quick_odds": {
+        "title": "Probabilidades Rápidas (o que os atalhos significam)",
+        "destiny": {
+          "title": "Sorte do Destino (comprar 1 após abrir)",
+          "desc": "Trate como comprar as primeiras h+1 cartas do deck.",
+          "note": "Se o seu grupo exige ≥2 cartas, este atalho não é aplicável."
+        },
+        "greed": {
+          "title": "Cálice da Ganância (comprar 2 após abrir)",
+          "desc": "Trate como comprar as primeiras h+2 cartas do deck."
+        },
+        "prosperity": {
+          "title": "Vaso da Prosperidade (m ∈ {3, 6})",
+          "desc": "Regra do complemento: falhar nas duas etapas (nenhuma na abertura, nenhuma nas m escavadas) e depois subtrair de 1.",
+          "note": "Isto corresponde a 'sem reposição' entre as etapas (abrir h, depois verificar o topo m do deck restante)."
+        },
+        "desires": {
+          "title": "Vaso dos Desejos (banir 10, depois comprar 2)",
+          "desc": "Regra do complemento entre etapas; o resultado marginal equivale a comprar as primeiras h+2 cartas."
+        }
+      },
+      "how_to_use": {
+        "title": "Como Usar Esta Calculadora",
+        "step1_title": "1. Carregue Seu Deck",
+        "step1_desc": "Cole o código do seu deck e valide para carregar a lista. Apenas cartas do deck principal são usadas nos cálculos.",
+        "step2_title": "2. Crie Grupos de Cartas",
+        "step2_desc": "Agrupe cartas relacionadas (ex.: 'Hand Traps', 'Iniciadores de Combo') e defina quantas deseja comprar.",
+        "step3_title": "3. Analise os Resultados",
+        "step3_desc": "Veja o detalhamento das probabilidades e otimize as proporções do deck com base nos cálculos."
+      },
+      "advanced": {
+        "title": "Recursos Avançados",
+        "groups_title": "Grupos de Cartas e Quantidades Desejadas",
+        "groups_desc": "Crie grupos de cartas relacionadas e especifique quantas deseja ver. Por exemplo:",
+        "examples": {
+          "hand_traps": { "title": "Hand Traps", "desc": "Deseja ver pelo menos 1 entre Ash Blossom, Maxx 'C', etc." },
+          "combo_starters": { "title": "Iniciadores de Combo", "desc": "Deseja exatamente 1–2 peças de combo na mão inicial" },
+          "engine_cards": { "title": "Cartas de Motor", "desc": "Deseja evitar comprar peças demais do motor" }
+        },
+        "searchers_title": "Integração com Buscadoras",
+        "searchers_desc": "Atribua cartas buscadoras a grupos específicos para obter probabilidades mais precisas. A calculadora considera que comprar uma buscadora é quase tão bom quanto comprar a carta alvo."
+      },
+      "tips": {
+        "title": "Dicas Pro",
+        "item1": "Use tamanhos de mão realistas (5 indo primeiro, 6 indo segundo)",
+        "item2": "Agrupe cartas por função em vez de nome para melhores insights",
+        "item3": "Considere buscadoras ao calcular probabilidades de peças de combo",
+        "item4": "Salve e compartilhe suas configurações para comparar construções de deck"
+      },
+      "footer": {
+        "dont_show": "Não mostrar novamente por 24 horas",
+        "got_it": "Entendi!"
+      }
+    },
+    "selector": {
+      "heading": "Cartas Alvo",
+      "add_group": "Adicionar Grupo",
+      "want_range": "Deseja {{range}} carta{{count !== 1 ? 's' : ''}} deste grupo",
+      "target_cards_label": "Cartas Alvo:",
+      "searchers_label": "Buscadoras:",
+      "form": {
+        "group_name": "Nome do Grupo",
+        "group_placeholder": "ex.: Hand Traps, Iniciadores de Combo",
+        "min_desired": "Mínimo Desejado (máx: {{max}})",
+        "max_desired": "Máximo Desejado (máx: {{max}})",
+        "search_label": "Buscar Cartas Alvo",
+        "search_placeholder": "Busque por nome ou ID da carta..."
+      },
+      "list": {
+        "no_cards": "Nenhuma carta encontrada para sua busca",
+        "copy_badge": "Cópia {{index}}",
+        "id_label": "ID",
+        "used_in_another": "• Usada em outro grupo"
+      },
+      "searchers": {
+        "title": "Cartas Buscadoras (Opcional)",
+        "subtitle": "Cartas que podem buscar as cartas alvo deste grupo",
+        "none_available": "Nenhuma carta disponível como buscadora",
+        "targets_cannot_be_searchers": "Cartas alvo não podem ser buscadoras",
+        "used_elsewhere": "• Usada em outro lugar",
+        "chip_copy": "(Cópia {{index}})"
+      },
+      "buttons": {
+        "update_group": "Atualizar Grupo",
+        "add_group": "Adicionar Grupo",
+        "cancel": "Cancelar"
+      }
+    },
+    "share": {
+      "button": "Compartilhar",
+      "load_deck_and_add_groups": "Carregue um deck e adicione grupos de cartas alvo antes de compartilhar",
+      "created": "Link compartilhável criado!",
+      "failed": "Falha ao criar link compartilhável",
+      "load_failed": "Falha ao carregar o deck compartilhado",
+      "not_found": "Configuração compartilhada não encontrada",
+      "loading_error": "Erro de rede ao carregar a configuração compartilhada",
+      "ensure_valid_deck_and_group": "Garanta que você tenha um deck válido e pelo menos um grupo de cartas alvo",
+      "save_failed": "Falha ao salvar a configuração",
+      "save_and_share": "Salvar e Compartilhar",
+      "login_to_save_and_share": "Faça login para Salvar e Compartilhar"
+    }
   }
 }
