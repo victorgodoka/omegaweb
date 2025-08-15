@@ -1,0 +1,14 @@
+{
+  "ext": {
+    "js": "application/javascript",
+    "mjs": "application/javascript",
+    "jsx": "application/javascript",
+    "ts": "application/javascript",
+    "tsx": "application/javascript"
+  },
+  "headers": {
+    "Access-Control-Allow-Origin": "*",
+    "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
+    "Access-Control-Allow-Headers": "Content-Type"
+  }
+}

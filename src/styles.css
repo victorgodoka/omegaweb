@@ -1,0 +1,74 @@
+@import 'tailwindcss';
+@plugin 'flowbite-react/plugin/tailwindcss';
+@source '../.flowbite-react/class-list.json';
+@import 'tailwindcss-animated';
+
+.controls {
+  display: flex;
+  border: 1px solid #ccc;
+  border-top: 0;
+  padding: 10px;
+}
+
+.controls-right {
+  margin-left: auto;
+}
+
+.state {
+  margin: 10px 0;
+  font-family: monospace;
+}
+
+.state-title {
+  color: #999;
+  text-transform: uppercase;
+}
+
+/* Quill Editor Dark Theme Styles */
+.quill-container .ql-editor {
+  background-color: #3f3f46;
+  color: #ffffff;
+  border: none;
+  min-height: 120px;
+}
+
+.quill-container .ql-toolbar {
+  background-color: #27272a;
+  border: 1px solid #52525b;
+  border-bottom: none;
+  border-radius: 0.5rem 0.5rem 0 0;
+}
+
+.quill-container .ql-container {
+  border: 1px solid #52525b;
+  border-top: none;
+  border-radius: 0 0 0.5rem 0.5rem;
+}
+
+.quill-container .ql-toolbar .ql-stroke {
+  stroke: #d4d4d8;
+}
+
+.quill-container .ql-toolbar .ql-fill {
+  fill: #d4d4d8;
+}
+
+.quill-container .ql-toolbar button:hover .ql-stroke {
+  stroke: #f97316;
+}
+
+.quill-container .ql-toolbar button:hover .ql-fill {
+  fill: #f97316;
+}
+
+.quill-container .ql-toolbar button.ql-active .ql-stroke {
+  stroke: #f97316;
+}
+
+.quill-container .ql-toolbar button.ql-active .ql-fill {
+  fill: #f97316;
+}
+
+.quill-container .ql-editor.ql-blank::before {
+  color: #9ca3af;
+}
