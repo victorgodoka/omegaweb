@@ -18,6 +18,8 @@ export interface CalculatorState {
   results: ProbabilityResult[] | null;
   shareableId: string | null;
   isSharing: boolean;
+  // When true, auto-run calculations once shared data is loaded
+  autoCalculate?: boolean;
 }
 
 export interface ProbabilityResult {

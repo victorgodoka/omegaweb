@@ -24,7 +24,8 @@ const HypergeometricCalculator: React.FC = () => {
     targetCards: [],
     results: null,
     shareableId: null,
-    isSharing: false
+    isSharing: false,
+    autoCalculate: false
   });
 
   // Convert ConvertData to a flat card list for easier manipulation
@@ -217,7 +218,8 @@ const HypergeometricCalculator: React.FC = () => {
             deckData: deckResponse.data,
             isDeckValid: true,
             isLoading: false,
-            results: null
+            results: null,
+            autoCalculate: true
           }));
         } else {
           showError('Failed to load shared deck');
@@ -263,6 +265,8 @@ const HypergeometricCalculator: React.FC = () => {
       loadSharedConfiguration(shareId);
     }
   }, [loadSharedConfiguration]);
+
+  
 
   // Check if modal should be shown automatically
   const shouldShowModal = useCallback(() => {
@@ -362,6 +366,19 @@ const HypergeometricCalculator: React.FC = () => {
 
     setState((prev: CalculatorState) => ({ ...prev, results }));
   }, [state.isDeckValid, state.deckData, state.targetCards, state.handSize, mainDeckCards, deckSize, calculateHypergeometric]);
+
+  // Auto-calculate once shared configuration is loaded
+  useEffect(() => {
+    if (
+      state.autoCalculate &&
+      state.isDeckValid &&
+      state.deckData &&
+      state.targetCards.length > 0
+    ) {
+      calculateProbabilities();
+      setState(prev => ({ ...prev, autoCalculate: false }));
+    }
+  }, [state.autoCalculate, state.isDeckValid, state.deckData, state.targetCards, calculateProbabilities]);
 
   // Handle deck code input
   const handleDeckCodeChange = useCallback((value: string) => {

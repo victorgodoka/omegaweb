@@ -42,134 +42,137 @@ const ProbabilityResults: React.FC<ProbabilityResultsProps> = ({
 
   return (
     <div className="space-y-6">
-      {results.map((result, index) => (
-        <div key={index} className="bg-zinc-700 rounded-lg p-4 border border-zinc-600">
-          {/* Group Header */}
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-semibold text-zinc-200">{result.groupName}</h3>
-            <span className="text-sm text-zinc-400">
-              {result.totalCopies} copies in deck
-            </span>
-          </div>
-
-          {/* Main Probabilities */}
-          <div className="mb-4 space-y-3">
-            {/* In Desired Range */}
-            <div>
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-zinc-300 font-medium">
-                  {result.minDesiredCount === result.maxDesiredCount 
-                    ? `Exactly ${result.minDesiredCount}` 
-                    : `${result.minDesiredCount}-${result.maxDesiredCount}`} card{result.maxDesiredCount !== 1 ? 's' : ''} in {handSize} cards:
-                </span>
-                <span className={`font-bold text-lg ${getProbabilityColor(result.inDesiredRange)}`}>
-                  {formatPercentage(result.inDesiredRange)}
-                </span>
-              </div>
-              
-              {/* Probability Bar */}
-              <div className="w-full bg-zinc-600 rounded-full h-2">
-                <div
-                  className={`h-2 rounded-full transition-all duration-500 ${getProbabilityBgColor(result.inDesiredRange)}`}
-                  style={{ width: `${Math.min(result.inDesiredRange * 100, 100)}%` }}
-                />
-              </div>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        {results.map((result, index) => (
+          <div key={index} className="bg-zinc-700 rounded-lg p-4 border border-zinc-600">
+            {/* Group Header */}
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold text-zinc-200">{result.groupName}</h3>
+              <span className="text-sm text-zinc-400">
+                {result.totalCopies} copies in deck
+              </span>
             </div>
 
-            {/* At Least Minimum Count (only show if different from range) */}
-            {result.minDesiredCount !== result.maxDesiredCount && (
+            {/* Main Probabilities */}
+            <div className="mb-4 space-y-3">
+              {/* In Desired Range */}
               <div>
                 <div className="flex items-center justify-between mb-2">
                   <span className="text-zinc-300 font-medium">
-                    At least {result.minDesiredCount} card{result.minDesiredCount !== 1 ? 's' : ''} in {handSize} cards:
+                    {result.minDesiredCount === result.maxDesiredCount
+                      ? `Exactly ${result.minDesiredCount}`
+                      : `${result.minDesiredCount}-${result.maxDesiredCount}`} card{result.maxDesiredCount !== 1 ? 's' : ''} in {handSize} cards:
                   </span>
-                  <span className={`font-bold text-lg ${getProbabilityColor(result.atLeastMin)}`}>
-                    {formatPercentage(result.atLeastMin)}
+                  <span className={`font-bold text-lg ${getProbabilityColor(result.inDesiredRange)}`}>
+                    {formatPercentage(result.inDesiredRange)}
                   </span>
                 </div>
-                
+
                 {/* Probability Bar */}
                 <div className="w-full bg-zinc-600 rounded-full h-2">
                   <div
-                    className={`h-2 rounded-full transition-all duration-500 ${getProbabilityBgColor(result.atLeastMin)}`}
-                    style={{ width: `${Math.min(result.atLeastMin * 100, 100)}%` }}
+                    className={`h-2 rounded-full transition-all duration-500 ${getProbabilityBgColor(result.inDesiredRange)}`}
+                    style={{ width: `${Math.min(result.inDesiredRange * 100, 100)}%` }}
                   />
                 </div>
               </div>
-            )}
-          </div>
 
-          {/* With Searchers (if applicable) */}
-          {result.withSearchers !== undefined && (
-            <div className="mb-4 p-3 bg-zinc-800 rounded-lg border border-orange-500/30">
-              <div className="flex items-center gap-2 mb-2">
-                <Icon icon="mdi:magnify" className="text-orange-400" />
-                <span className="text-zinc-300 font-medium">With searchers:</span>
-              </div>
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-zinc-400 text-sm">
-                  At least {result.minDesiredCount} (including searchers)
-                </span>
-                <span className={`font-bold text-lg ${getProbabilityColor(result.withSearchers)}`}>
-                  {formatPercentage(result.withSearchers)}
-                </span>
-              </div>
-              
-              {/* Searcher Probability Bar */}
-              <div className="w-full bg-zinc-600 rounded-full h-2">
-                <div
-                  className="h-2 rounded-full transition-all duration-500 bg-orange-500"
-                  style={{ width: `${Math.min(result.withSearchers * 100, 100)}%` }}
-                />
-              </div>
-              
-              {/* Improvement indicator */}
-              {result.withSearchers > result.atLeastMin && (
-                <div className="mt-2 text-xs text-green-400 flex items-center gap-1">
-                  <Icon icon="mdi:trending-up" />
-                  +{formatPercentage(result.withSearchers - result.atLeastMin)} improvement
+              {/* At Least Minimum Count (only show if different from range) */}
+              {result.minDesiredCount !== result.maxDesiredCount && (
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-zinc-300 font-medium">
+                      At least {result.minDesiredCount} card{result.minDesiredCount !== 1 ? 's' : ''} in {handSize} cards:
+                    </span>
+                    <span className={`font-bold text-lg ${getProbabilityColor(result.atLeastMin)}`}>
+                      {formatPercentage(result.atLeastMin)}
+                    </span>
+                  </div>
+
+                  {/* Probability Bar */}
+                  <div className="w-full bg-zinc-600 rounded-full h-2">
+                    <div
+                      className={`h-2 rounded-full transition-all duration-500 ${getProbabilityBgColor(result.atLeastMin)}`}
+                      style={{ width: `${Math.min(result.atLeastMin * 100, 100)}%` }}
+                    />
+                  </div>
                 </div>
               )}
             </div>
-          )}
 
-          {/* Detailed Breakdown */}
-          <div className="space-y-2">
-            <h4 className="text-sm font-medium text-zinc-400 mb-2">Detailed Breakdown:</h4>
-            {result.probabilities.map(({ copies, probability }) => (
-              <div key={copies} className="flex items-center justify-between text-sm">
-                <span className="text-zinc-400">
-                  Exactly {copies} card{copies !== 1 ? 's' : ''}:
-                </span>
-                <span className={`font-medium ${getProbabilityColor(probability)}`}>
-                  {formatPercentage(probability)}
-                </span>
-              </div>
-            ))}
-          </div>
+            {/* With Searchers (if applicable) */}
+            {result.withSearchers !== undefined && (
+              <div className="mb-4 p-3 bg-zinc-800 rounded-lg border border-orange-500/30">
+                <div className="flex items-center gap-2 mb-2">
+                  <Icon icon="mdi:magnify" className="text-orange-400" />
+                  <span className="text-zinc-300 font-medium">With searchers:</span>
+                </div>
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-zinc-400 text-sm">
+                    At least {result.minDesiredCount} (including searchers)
+                  </span>
+                  <span className={`font-bold text-lg ${getProbabilityColor(result.withSearchers)}`}>
+                    {formatPercentage(result.withSearchers)}
+                  </span>
+                </div>
 
-          {/* Statistical Info */}
-          <div className="mt-4 pt-3 border-t border-zinc-600 text-xs text-zinc-500">
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <span className="font-medium">Deck size:</span> 40 cards
+                {/* Searcher Probability Bar */}
+                <div className="w-full bg-zinc-600 rounded-full h-2">
+                  <div
+                    className="h-2 rounded-full transition-all duration-500 bg-orange-500"
+                    style={{ width: `${Math.min(result.withSearchers * 100, 100)}%` }}
+                  />
+                </div>
+
+                {/* Improvement indicator */}
+                {result.withSearchers > result.atLeastMin && (
+                  <div className="mt-2 text-xs text-green-400 flex items-center gap-1">
+                    <Icon icon="mdi:trending-up" />
+                    +{formatPercentage(result.withSearchers - result.atLeastMin)} improvement
+                  </div>
+                )}
               </div>
-              <div>
-                <span className="font-medium">Hand size:</span> {handSize} cards
+            )}
+
+            {/* Detailed Breakdown */}
+            <div className="space-y-2">
+              <h4 className="text-sm font-medium text-zinc-400 mb-2">Detailed Breakdown:</h4>
+              {result.probabilities.map(({ copies, probability }) => (
+                <div key={copies} className="flex items-center justify-between text-sm">
+                  <span className="text-zinc-400">
+                    Exactly {copies} card{copies !== 1 ? 's' : ''}:
+                  </span>
+                  <span className={`font-medium ${getProbabilityColor(probability)}`}>
+                    {formatPercentage(probability)}
+                  </span>
+                </div>
+              ))}
+            </div>
+
+            {/* Statistical Info */}
+            <div className="mt-4 pt-3 border-t border-zinc-600 text-xs text-zinc-500">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <span className="font-medium">Deck size:</span> 40 cards
+                </div>
+                <div>
+                  <span className="font-medium">Hand size:</span> {handSize} cards
+                </div>
               </div>
             </div>
           </div>
-        </div>
-      ))}
+        ))}
+      </div>
 
-      {/* Summary Statistics */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        {/* Summary Statistics */}
       {results.length > 1 && (
         <div className="bg-zinc-700 rounded-lg p-4 border border-zinc-600">
           <h3 className="text-lg font-semibold text-zinc-200 mb-3 flex items-center gap-2">
             <Icon icon="mdi:chart-box" className="text-blue-400" />
             Summary
           </h3>
-          
+
           <div className="space-y-2">
             {/* Best odds */}
             <div className="flex items-center justify-between">
@@ -178,7 +181,7 @@ const ProbabilityResults: React.FC<ProbabilityResultsProps> = ({
                 {formatPercentage(Math.max(...results.map(r => r.inDesiredRange)))}
               </span>
             </div>
-            
+
             {/* Average odds */}
             <div className="flex items-center justify-between">
               <span className="text-zinc-400">Average odds (desired range):</span>
@@ -214,6 +217,7 @@ const ProbabilityResults: React.FC<ProbabilityResultsProps> = ({
           <li>• Target cards cannot be selected as searchers</li>
           <li>• Results are theoretical and may vary in actual gameplay</li>
         </ul>
+      </div>
       </div>
     </div>
   );
