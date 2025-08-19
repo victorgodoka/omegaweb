@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useMemo } from 'react';
-import { Card, Button, Alert } from 'flowbite-react';
+import { Card, Button, Alert, Badge } from 'flowbite-react';
 import { Icon } from '@iconify/react';
 import { api } from '@/utils/Api';
 import { useToast } from '@/contexts/ToastContext';
@@ -163,69 +163,85 @@ const SmallWorldResolver: React.FC = () => {
   }, [deckCards, handCard, targetCard]);
 
   return (
-    <div className="min-h-screen bg-zinc-900 text-white p-4">
-      <div className="max-w-7xl mx-auto">
-        {/* Usage Instructions */}
-        <div className="bg-zinc-900 border border-zinc-700 rounded-lg p-4">
-          <h4 className="font-semibold text-zinc-300 mb-2">How to Use Small World:</h4>
-          <ol className="text-sm text-zinc-200 space-y-1 list-decimal list-inside">
-            <li>Reveal {handCard?.name} from your hand</li>
-            <li>Choose one of the bridge cards above from your deck</li>
-            <li>Banish {handCard?.name} from your hand face-down</li>
-            <li>Add {targetCard?.name} from your deck to your hand</li>
-            <li>Banish the bridge card from your deck face-down</li>
-          </ol>
+    <div className="min-h-screen bg-zinc-950 text-white">
+      <div className="mx-auto px-4 py-8">
+        {/* Header */}
+        <div className="mb-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-2xl md:text-3xl font-semibold tracking-tight bg-gradient-to-r from-blue-300 to-cyan-300 bg-clip-text text-transparent">
+                Small World Resolver
+              </h1>
+              <p className="text-zinc-400 mt-1 text-sm">
+                Find bridge cards that connect a hand monster to a target monster through exactly one matching stat each.
+              </p>
+            </div>
+            {deckCards.length > 0 && (
+              <Badge color="success" className="bg-green-900/40 border border-green-700 text-green-300">
+                {deckCards.length} monsters loaded
+              </Badge>
+            )}
+          </div>
         </div>
 
-        {/* Deck Loading Section */}
-        <Card className="bg-zinc-800 border-zinc-700 mb-6">
+        {/* Deck Loader */}
+        <Card className="bg-gradient-to-br from-zinc-900 to-zinc-800/80 border-zinc-700/70 backdrop-blur-xl mb-8">
           <div className="space-y-4">
-            <h2 className="text-xl font-semibold text-zinc-300">Load Your Deck</h2>
-            <div className="flex gap-4">
+            <div className="flex items-center gap-2">
+              <Icon icon="solar:documents-bold-duotone" className="h-5 w-5 text-blue-300" />
+              <h2 className="text-lg font-semibold text-zinc-200">Load your deck</h2>
+            </div>
+            <div className="flex flex-col md:flex-row gap-4">
               <textarea
                 value={deckCode}
                 onChange={(e) => setDeckCode(e.target.value)}
-                placeholder="Paste your deck code here..."
-                className="flex-1 bg-zinc-700 border-zinc-600 text-white rounded-lg p-3 min-h-[100px] resize-none"
+                placeholder="Paste your deck code here (DUELIST.UNITE or YDK code)..."
+                className="flex-1 bg-zinc-900/70 border-zinc-700 text-white rounded-lg p-3 min-h-[110px] resize-y focus:ring-2 focus:ring-blue-500/40 focus:border-blue-500/40"
                 disabled={loading}
               />
-              <Button
-                onClick={loadDeck}
-                disabled={loading || !deckCode.trim()}
-                className="bg-zinc-600 hover:bg-zinc-700 self-start"
-              >
-                {loading ? (
-                  <div className="flex items-center gap-2">
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                    Loading...
-                  </div>
-                ) : (
-                  <div className="flex items-center gap-2">
-                    <Icon icon="heroicons:magnifying-glass" className="h-4 w-4" />
-                    Load Deck
-                  </div>
+              <div className="flex gap-2">
+                <Button
+                  onClick={loadDeck}
+                  disabled={loading || !deckCode.trim()}
+                  className="bg-blue-600 hover:bg-blue-500 focus:ring-4 focus:ring-blue-500/30"
+                >
+                  {loading ? (
+                    <div className="flex items-center gap-2">
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                      Loading
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-2">
+                      <Icon icon="heroicons:magnifying-glass" className="h-4 w-4" />
+                      Load Deck
+                    </div>
+                  )}
+                </Button>
+                {deckCards.length > 0 && (
+                  <Button
+                    color="gray"
+                    onClick={() => { setDeckCards([]); setHandCard(null); setTargetCard(null); setValidChains([]); setIsDeckValid(false); }}
+                    className="bg-zinc-700 hover:bg-zinc-600 border-zinc-600"
+                  >
+                    <Icon icon="heroicons:arrow-path" className="h-4 w-4 mr-1" /> Reset
+                  </Button>
                 )}
-              </Button>
+              </div>
             </div>
-            
+
             {!isDeckValid && deckCode && !loading && (
               <Alert color="failure" icon={() => <Icon icon="heroicons:exclamation-triangle" className="h-5 w-5" />}>
                 Failed to load deck. Please check your deck code.
               </Alert>
             )}
-
-            {deckCards.length > 0 && (
-              <div className="text-sm text-zinc-400">
-                Loaded {deckCards.length} monster cards from your deck
-              </div>
-            )}
           </div>
         </Card>
 
-        {deckCards.length > 0 && (
-          <>
-            {/* Card Selection */}
-            <div className="grid md:grid-cols-2 gap-6 mb-6">
+        {/* Main Grid */}
+        {deckCards.length > 0 ? (
+          <div className="space-y-6 space-x-6">
+            {/* Left: Selectors */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 w-full">
               <CardSelector
                 title="Card in Hand"
                 subtitle="Select the monster you want to reveal from your hand"
@@ -234,7 +250,7 @@ const SmallWorldResolver: React.FC = () => {
                 availableCards={availableCards}
                 placeholder="Choose card from hand..."
               />
-              
+
               <CardSelector
                 title="Target Card"
                 subtitle="Select the monster you want to search from your deck"
@@ -245,24 +261,42 @@ const SmallWorldResolver: React.FC = () => {
               />
             </div>
 
-            {/* Chain Display */}
-            {handCard && targetCard && (
-              <ChainDisplay
-                handCard={handCard}
-                targetCard={targetCard}
-                validChains={validChains}
-              />
-            )}
-
-            {/* Results */}
-            {handCard && targetCard && (
-              <BridgeResults
-                chains={validChains}
-                handCard={handCard}
-                targetCard={targetCard}
-              />
-            )}
-          </>
+            {/* Right: Results (sticky) */}
+            <div className="lg:col-span-6">
+              <div className="lg:sticky lg:top-6 space-y-6">
+                {handCard && targetCard ? (
+                  <>
+                    <ChainDisplay
+                      handCard={handCard}
+                      targetCard={targetCard}
+                      validChains={validChains}
+                    />
+                    <BridgeResults
+                      chains={validChains}
+                      handCard={handCard}
+                      targetCard={targetCard}
+                    />
+                  </>
+                ) : (
+                  <Card className="bg-zinc-900/60 border-zinc-800">
+                    <div className="py-10 text-center">
+                      <div className="text-5xl mb-3">🔍</div>
+                      <div className="text-zinc-300 font-medium mb-1">Select two cards to begin</div>
+                      <div className="text-zinc-500 text-sm">Pick a hand monster and a target monster to see possible bridges.</div>
+                    </div>
+                  </Card>
+                )}
+              </div>
+            </div>
+          </div>
+        ) : (
+          <Card className="bg-zinc-900/60 border-zinc-800">
+            <div className="py-10 text-center">
+              <div className="text-5xl mb-3">🗂️</div>
+              <div className="text-zinc-300 font-medium mb-1">Load a deck to get started</div>
+              <div className="text-zinc-500 text-sm">Paste a deck code above and click Load Deck.</div>
+            </div>
+          </Card>
         )}
       </div>
     </div>

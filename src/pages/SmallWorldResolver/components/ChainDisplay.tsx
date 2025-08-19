@@ -20,14 +20,17 @@ const ChainDisplay: React.FC<ChainDisplayProps> = ({
   };
 
   return (
-    <Card className="bg-zinc-800 border-zinc-700 mb-6">
+    <Card className="bg-gradient-to-br from-zinc-900 to-zinc-800/80 border-zinc-700/70">
       <div className="space-y-4">
-        <h2 className="text-xl font-semibold text-blue-300">Small World Chain Analysis</h2>
-        
+        <div className="flex items-center gap-2">
+          <Icon icon="solar:link-square-bold-duotone" className="h-5 w-5 text-cyan-300" />
+          <h2 className="text-lg font-semibold text-zinc-100">Small World Chain</h2>
+        </div>
+
         {/* Chain Overview */}
-        <div className="flex items-center justify-center gap-4 p-4 bg-zinc-700 rounded-lg">
+        <div className="flex items-center justify-center gap-5 p-4 bg-zinc-900/60 rounded-lg border border-zinc-800">
           <div className="text-center">
-            <div className="w-16 h-24 bg-zinc-600 rounded mb-2 overflow-hidden">
+            <div className="w-16 h-24 bg-zinc-800 rounded mb-2 overflow-hidden shadow-sm">
               <img
                 src={handCard.image}
                 alt={handCard.name}
@@ -35,24 +38,24 @@ const ChainDisplay: React.FC<ChainDisplayProps> = ({
                 loading="lazy"
               />
             </div>
-            <div className="text-sm font-medium text-white">{handCard.name}</div>
-            <div className="text-xs text-zinc-400">Hand Card</div>
+            <div className="text-sm font-medium text-white truncate max-w-[8rem]" title={handCard.name}>{handCard.name}</div>
+            <div className="text-xs text-zinc-400">Hand</div>
           </div>
 
           <Icon icon="heroicons:arrow-right" className="h-6 w-6 text-zinc-400" />
           
           <div className="text-center">
-            <div className="w-16 h-24 bg-zinc-600 rounded mb-2 flex items-center justify-center">
-              <span className="text-2xl">?</span>
+            <div className="w-16 h-24 bg-zinc-800 rounded mb-2 flex items-center justify-center border border-zinc-700">
+              <span className="text-2xl text-zinc-300">?</span>
             </div>
-            <div className="text-sm font-medium text-white">Bridge Card</div>
+            <div className="text-sm font-medium text-white">Bridge</div>
             <div className="text-xs text-zinc-400">From Deck</div>
           </div>
 
           <Icon icon="heroicons:arrow-right" className="h-6 w-6 text-zinc-400" />
 
           <div className="text-center">
-            <div className="w-16 h-24 bg-zinc-600 rounded mb-2 overflow-hidden">
+            <div className="w-16 h-24 bg-zinc-800 rounded mb-2 overflow-hidden shadow-sm">
               <img
                 src={targetCard.image}
                 alt={targetCard.name}
@@ -60,22 +63,22 @@ const ChainDisplay: React.FC<ChainDisplayProps> = ({
                 loading="lazy"
               />
             </div>
-            <div className="text-sm font-medium text-white">{targetCard.name}</div>
-            <div className="text-xs text-zinc-400">Target Card</div>
+            <div className="text-sm font-medium text-white truncate max-w-[8rem]" title={targetCard.name}>{targetCard.name}</div>
+            <div className="text-xs text-zinc-400">Target</div>
           </div>
         </div>
 
         {/* Chain Status */}
         <div className="text-center">
           {validChains.length > 0 ? (
-            <div className="inline-flex items-center gap-2 px-4 py-2 bg-green-900 border border-green-700 rounded-lg">
+            <div className="inline-flex items-center gap-2 px-4 py-2 bg-green-900/40 border border-green-700 rounded-lg">
               <div className="w-2 h-2 bg-green-400 rounded-full"></div>
               <span className="text-green-300 font-medium">
                 {validChains.length} valid chain{validChains.length !== 1 ? 's' : ''} found
               </span>
             </div>
           ) : (
-            <div className="inline-flex items-center gap-2 px-4 py-2 bg-red-900 border border-red-700 rounded-lg">
+            <div className="inline-flex items-center gap-2 px-4 py-2 bg-red-900/40 border border-red-700 rounded-lg">
               <div className="w-2 h-2 bg-red-400 rounded-full"></div>
               <span className="text-red-300 font-medium">
                 No valid chains found
@@ -86,8 +89,8 @@ const ChainDisplay: React.FC<ChainDisplayProps> = ({
 
         {/* Card Stats Comparison */}
         <div className="grid md:grid-cols-2 gap-4">
-          <div className="bg-zinc-700 rounded-lg p-4">
-            <h4 className="font-semibold text-white mb-3">{handCard.name}</h4>
+          <div className="bg-zinc-900/60 rounded-lg p-4 border border-zinc-800">
+            <h4 className="font-semibold text-white mb-3 truncate" title={handCard.name}>{handCard.name}</h4>
             <div className="space-y-2">
               <div className="flex justify-between">
                 <span className="text-zinc-300">Type:</span>
@@ -112,8 +115,8 @@ const ChainDisplay: React.FC<ChainDisplayProps> = ({
             </div>
           </div>
 
-          <div className="bg-zinc-700 rounded-lg p-4">
-            <h4 className="font-semibold text-white mb-3">{targetCard.name}</h4>
+          <div className="bg-zinc-900/60 rounded-lg p-4 border border-zinc-800">
+            <h4 className="font-semibold text-white mb-3 truncate" title={targetCard.name}>{targetCard.name}</h4>
             <div className="space-y-2">
               <div className="flex justify-between">
                 <span className="text-zinc-300">Type:</span>

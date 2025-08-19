@@ -21,19 +21,7 @@ const CardSelector: React.FC<CardSelectorProps> = ({
   const [showAddGroup, setShowAddGroup] = useState(false);
   const [editingGroupIndex, setEditingGroupIndex] = useState<number | null>(null);
 
-  // Get individual card instances (each copy gets its own entry)
-  const individualCards = useMemo(() => {
-    const cardInstances: (Cards & { location: 'main' | 'extra' | 'side'; instanceId: string })[] = [];
-    cards.forEach(card => {
-      for (let i = 0; i < card.qtd; i++) {
-        cardInstances.push({
-          ...card,
-          instanceId: `${card.id}-${i}` // Unique identifier for each copy
-        });
-      }
-    });
-    return cardInstances;
-  }, [cards]);
+  // Note: target selection uses unique monster rows with quantity controls (no per-instance list needed)
 
   // Get unique cards for reference (used for calculations)
   const uniqueCards = useMemo(() => {
@@ -46,36 +34,26 @@ const CardSelector: React.FC<CardSelectorProps> = ({
     return Array.from(uniqueMap.values());
   }, [cards]);
 
-  // Filter and sort individual card instances based on search term
-  const filteredCards = useMemo(() => {
-    const filtered = individualCards.filter(card => 
-      card.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+  // Helper: is monster (main-deck) card
+  const isMonster = useCallback((card: Cards) => !card.isSpell && !card.isTrap, []);
+
+  // Unique monster cards only for target selection list
+  const uniqueMonsterCards = useMemo(() => {
+    return uniqueCards.filter(isMonster);
+  }, [uniqueCards, isMonster]);
+
+  // Filter and sort UNIQUE monster cards based on search term
+  const filteredUniqueMonsterCards = useMemo(() => {
+    const filtered = uniqueMonsterCards.filter(card => 
+      (card.name || `Card ${card.id}`).toLowerCase().includes(searchTerm.toLowerCase()) ||
       card.id.toString().includes(searchTerm)
     );
-    
-    return filtered.sort((a, b) => {
-      // Sort by name if available, otherwise by ID
-      const nameA = a.name || `Card ${a.id}`;
-      const nameB = b.name || `Card ${b.id}`;
-      return nameA.localeCompare(nameB);
-    });
-  }, [individualCards, searchTerm]);
+    return filtered.sort((a, b) => (getCardName(a)).localeCompare(getCardName(b)));
+  }, [uniqueMonsterCards, searchTerm]);
 
 
 
-  // Handle card selection for group creation (by instance ID)
-  const toggleCardSelection = (instanceId: string) => {
-    setSelectedCards(prev => 
-      prev.includes(instanceId)
-        ? prev.filter(id => id !== instanceId)
-        : [...prev, instanceId]
-    );
-  };
-
-  // Check if a specific card instance is selected
-  const isCardInstanceSelected = (instanceId: string) => {
-    return selectedCards.includes(instanceId);
-  };
+  // Selection is handled via addOneCopy/removeOneCopy quantity controls
 
   // Handle searcher card selection for current group (by instance ID)
   const toggleSearcherSelection = (instanceId: string) => {
@@ -255,39 +233,60 @@ const CardSelector: React.FC<CardSelectorProps> = ({
     return usedCount;
   };
 
-  // Check if a specific card instance is available (not used in other groups)
-  const isCardInstanceAvailable = (instanceId: string) => {
-    const cardId = parseInt(instanceId.split('-')[0]);
-    const instanceIndex = parseInt(instanceId.split('-')[1]);
-    
-    // Count used as targets
-    let usedAsTargetCount = 0;
+  // Get how many copies of a card are already used across groups (targets + searchers), excluding the group being edited
+  const getUsedOverallCopiesCount = (cardId: number) => {
+    let used = 0;
     targetCards.forEach((group, groupIndex) => {
       if (editingGroupIndex !== null && groupIndex === editingGroupIndex) return;
-      group.cards.forEach(id => {
-        const targetCardId = parseInt(id.split('-')[0]);
-        const targetInstanceIndex = parseInt(id.split('-')[1]);
-        if (targetCardId === cardId && targetInstanceIndex === instanceIndex) {
-          usedAsTargetCount++;
-        }
-      });
+      used += group.cards.filter(id => parseInt(id.split('-')[0]) === cardId).length;
+      used += group.searcherCards.filter(id => parseInt(id.split('-')[0]) === cardId).length;
     });
-    
-    // Count used as searchers
-    let usedAsSearcherCount = 0;
-    targetCards.forEach((group, groupIndex) => {
-      if (editingGroupIndex !== null && groupIndex === editingGroupIndex) return;
-      group.searcherCards.forEach(id => {
-        const searcherCardId = parseInt(id.split('-')[0]);
-        const searcherInstanceIndex = parseInt(id.split('-')[1]);
-        if (searcherCardId === cardId && searcherInstanceIndex === instanceIndex) {
-          usedAsSearcherCount++;
-        }
-      });
-    });
-    
-    return usedAsTargetCount === 0 && usedAsSearcherCount === 0;
+    return used;
   };
+
+  // Count selected instances for a given card id in the current form
+  const getSelectedCountForId = (cardId: number) => {
+    return selectedCards.filter(id => parseInt(id.split('-')[0]) === cardId).length;
+  };
+
+  // Find next available instance index for a given card id (not used elsewhere and not already selected)
+  const findNextAvailableInstanceId = (cardId: number, maxQtd: number): string | null => {
+    const taken = new Set<string>();
+    // Instances used in other groups (targets + searchers)
+    targetCards.forEach((group, groupIndex) => {
+      if (editingGroupIndex !== null && groupIndex === editingGroupIndex) return;
+      group.cards.forEach(inst => { if (parseInt(inst.split('-')[0]) === cardId) taken.add(inst); });
+      group.searcherCards.forEach(inst => { if (parseInt(inst.split('-')[0]) === cardId) taken.add(inst); });
+    });
+    // Instances already selected in current form
+    selectedCards.forEach(inst => { if (parseInt(inst.split('-')[0]) === cardId) taken.add(inst); });
+    for (let i = 0; i < maxQtd; i++) {
+      const candidate = `${cardId}-${i}`;
+      if (!taken.has(candidate)) return candidate;
+    }
+    return null;
+  };
+
+  const addOneCopy = (card: Cards) => {
+    const instanceId = findNextAvailableInstanceId(card.id, card.qtd);
+    if (instanceId) {
+      setSelectedCards(prev => [...prev, instanceId]);
+    }
+  };
+
+  const removeOneCopy = (card: Cards) => {
+    // Remove the highest-index selected instance for this card id (LIFO)
+    const indices = selectedCards
+      .filter(id => parseInt(id.split('-')[0]) === card.id)
+      .map(id => parseInt(id.split('-')[1]))
+      .sort((a, b) => b - a);
+    if (indices.length > 0) {
+      const toRemove = `${card.id}-${indices[0]}`;
+      setSelectedCards(prev => prev.filter(id => id !== toRemove));
+    }
+  };
+
+  // Per-instance availability checks are not needed for the unique list UI
 
 
 
@@ -462,30 +461,24 @@ const CardSelector: React.FC<CardSelectorProps> = ({
               />
             </div>
 
-            {/* Card Selection List */}
+            {/* Card Selection List (unique monster cards with quantity controls) */}
             <div className="max-h-64 overflow-y-auto border border-zinc-600 rounded-lg">
               <div className="divide-y divide-zinc-600">
-                {filteredCards.length === 0 ? (
+                {filteredUniqueMonsterCards.length === 0 ? (
                   <div className="p-4 text-center text-zinc-400">
                     {t('calculator.selector.list.no_cards')}
                   </div>
                 ) : (
-                  filteredCards.map(card => {
-                    const isSelected = isCardInstanceSelected(card.instanceId);
-                    const isAvailable = isCardInstanceAvailable(card.instanceId);
-                    const instanceIndex = parseInt(card.instanceId.split('-')[1]) + 1;
-                    
+                  filteredUniqueMonsterCards.map(card => {
+                    const selectedCount = getSelectedCountForId(card.id);
+                    const usedOverall = getUsedOverallCopiesCount(card.id);
+                    const remaining = Math.max(0, card.qtd - usedOverall - selectedCount);
+                    const canAdd = remaining > 0;
+                    const canRemove = selectedCount > 0;
                     return (
                       <div
-                        key={card.instanceId}
-                        className={`flex items-center gap-3 p-3 cursor-pointer transition-colors ${
-                          isSelected
-                            ? 'bg-blue-600/20 border-l-4 border-l-blue-500'
-                            : !isAvailable
-                            ? 'opacity-50 cursor-not-allowed bg-zinc-800/50'
-                            : 'hover:bg-zinc-700/50'
-                        }`}
-                        onClick={() => isAvailable && toggleCardSelection(card.instanceId)}
+                        key={card.id}
+                        className={`flex items-center gap-3 p-3`}
                       >
                         {/* Card Image */}
                         <div className="w-12 h-16 bg-zinc-700 rounded overflow-hidden flex-shrink-0">
@@ -500,7 +493,7 @@ const CardSelector: React.FC<CardSelectorProps> = ({
                             }}
                           />
                         </div>
-                        
+
                         {/* Card Info */}
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2">
@@ -508,28 +501,37 @@ const CardSelector: React.FC<CardSelectorProps> = ({
                               {getCardName(card)}
                             </span>
                             <span className="text-xs bg-zinc-600 text-zinc-300 px-2 py-1 rounded-full flex-shrink-0">
-                              {t('calculator.selector.copy_badge', { index: instanceIndex })}
+                              x{card.qtd}
                             </span>
                           </div>
                           <div className="text-sm text-zinc-400 mt-1">
                             {t('calculator.selector.id_label')}: {card.id}
-                            {!isAvailable && (
-                              <span className="text-red-400 ml-2">
-                                {t('calculator.selector.used_in_another')}
-                              </span>
-                            )}
                           </div>
                         </div>
-                        
-                        {/* Selection Checkbox */}
-                        <div className={`w-5 h-5 rounded border-2 flex items-center justify-center flex-shrink-0 ${
-                          isSelected
-                            ? 'bg-blue-500 border-blue-500'
-                            : 'border-zinc-500'
-                        }`}>
-                          {isSelected && (
-                            <Icon icon="mdi:check" className="text-white text-sm" />
-                          )}
+
+                        {/* Quantity controls */}
+                        <div className="flex items-center gap-2 flex-shrink-0">
+                          <button
+                            type="button"
+                            onClick={() => removeOneCopy(card)}
+                            disabled={!canRemove}
+                            className={`w-7 h-7 rounded-full flex items-center justify-center border ${canRemove ? 'border-zinc-500 text-zinc-200 hover:bg-zinc-600/40' : 'border-zinc-700 text-zinc-600 cursor-not-allowed'}`}
+                            title={t('calculator.selector.buttons.remove')}
+                          >
+                            <Icon icon="mdi:minus" />
+                          </button>
+                          <span className="text-sm text-zinc-300 w-10 text-center">
+                            {selectedCount}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => addOneCopy(card)}
+                            disabled={!canAdd}
+                            className={`w-7 h-7 rounded-full flex items-center justify-center border ${canAdd ? 'border-zinc-500 text-zinc-200 hover:bg-zinc-600/40' : 'border-zinc-700 text-zinc-600 cursor-not-allowed'}`}
+                            title={t('calculator.selector.buttons.add')}
+                          >
+                            <Icon icon="mdi:plus" />
+                          </button>
                         </div>
                       </div>
                     );

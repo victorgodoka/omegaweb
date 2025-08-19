@@ -87,9 +87,9 @@ const BridgeResults: React.FC<BridgeResultsProps> = ({
   if (chains.length === 0) {
     return (
       <div className="space-y-6">
-        <Card className="bg-zinc-800 border-zinc-700">
-          <div className="text-center py-8">
-            <div className="text-6xl mb-4">😔</div>
+        <Card className="bg-gradient-to-br from-zinc-900 to-zinc-800/80 border-zinc-700/70">
+          <div className="text-center py-10">
+            <div className="text-6xl mb-3">😔</div>
             <h3 className="text-xl font-semibold text-red-300 mb-2">No Valid Chains Found</h3>
             <p className="text-zinc-400 max-w-md mx-auto">
               There are no cards in your deck that can serve as a bridge between{' '}
@@ -100,11 +100,11 @@ const BridgeResults: React.FC<BridgeResultsProps> = ({
         </Card>
 
         {bridgeSuggestions.length > 0 && (
-          <Card className="bg-zinc-800 border-zinc-700">
+          <Card className="bg-gradient-to-br from-zinc-900 to-zinc-800/80 border-zinc-700/70">
             <div className="space-y-4">
               <div className="flex items-center gap-2">
-                <Icon icon="heroicons:light-bulb" className="h-6 w-6 text-yellow-400" />
-                <h3 className="text-xl font-semibold text-yellow-300">
+                <Icon icon="heroicons:light-bulb" className="h-6 w-6 text-yellow-300" />
+                <h3 className="text-lg font-semibold text-zinc-100">
                   Suggested Bridge Cards ({bridgeSuggestions.length})
                 </h3>
               </div>
@@ -113,11 +113,11 @@ const BridgeResults: React.FC<BridgeResultsProps> = ({
                 These cards from the card database could work as bridges. Consider adding them to your deck:
               </p>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 {bridgeSuggestions.map((card) => (
                   <div
                     key={card.id}
-                    className="bg-zinc-700 rounded-lg p-4 border border-zinc-600 hover:border-zinc-500 transition-colors"
+                    className="bg-zinc-900/60 rounded-lg p-4 border border-zinc-800 hover:border-zinc-700 transition-colors"
                   >
                     <div className="flex items-start gap-3">
                       <img
@@ -127,7 +127,7 @@ const BridgeResults: React.FC<BridgeResultsProps> = ({
                         loading="lazy"
                       />
                       <div className="flex-1 min-w-0">
-                        <h4 className="text-white font-medium text-sm mb-2 truncate">
+                        <h4 className="text-white font-medium text-sm mb-2 truncate" title={card.name}>
                           {card.name}
                         </h4>
                         
@@ -159,7 +159,7 @@ const BridgeResults: React.FC<BridgeResultsProps> = ({
                 ))}
               </div>
 
-              <div className="bg-yellow-900 border border-yellow-700 rounded-lg p-4">
+              <div className="bg-yellow-900/40 border border-yellow-700 rounded-lg p-4">
                 <div className="text-yellow-300 text-sm">
                   <Icon icon="heroicons:information-circle" className="h-4 w-4 inline mr-1" />
                   <strong>Tip:</strong> Each suggested card shares exactly one stat with both your hand card and target card, making them valid Small World bridges.
@@ -173,27 +173,27 @@ const BridgeResults: React.FC<BridgeResultsProps> = ({
   }
 
   return (
-    <Card className="bg-zinc-800 border-zinc-700">
+    <Card className="bg-gradient-to-br from-zinc-900 to-zinc-800/80 border-zinc-700/70">
       <div className="space-y-6">
         <div className="flex items-center gap-2">
           <Icon icon="heroicons:check-circle" className="h-6 w-6 text-green-400" />
-          <h2 className="text-xl font-semibold text-green-300">
+          <h2 className="text-lg font-semibold text-zinc-100">
             Valid Bridge Cards ({chains.length})
           </h2>
         </div>
 
-        <div className="space-y-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           {chains.map((chain, index) => (
             <div
               key={`${chain.bridgeCard.id}-${index}`}
-              className="bg-zinc-700 rounded-lg p-4 border border-zinc-600"
+              className="bg-zinc-900/60 rounded-lg p-4 border border-zinc-800 hover:border-zinc-700 transition-colors"
             >
               {/* Chain Visualization */}
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-4">
                   {/* Hand Card */}
                   <div className="text-center">
-                    <div className="w-12 h-16 bg-zinc-600 rounded overflow-hidden mb-1">
+                    <div className="w-12 h-16 bg-zinc-800 rounded overflow-hidden mb-1">
                       <img
                         src={chain.handCard.image}
                         alt={chain.handCard.name}
@@ -201,7 +201,7 @@ const BridgeResults: React.FC<BridgeResultsProps> = ({
                         loading="lazy"
                       />
                     </div>
-                    <div className="text-xs text-zinc-400">Hand</div>
+                    <div className="text-[11px] text-zinc-400">Hand</div>
                   </div>
 
                   {/* Connection 1 */}
@@ -214,7 +214,7 @@ const BridgeResults: React.FC<BridgeResultsProps> = ({
 
                   {/* Bridge Card */}
                   <div className="text-center">
-                    <div className="w-12 h-16 bg-zinc-600 rounded overflow-hidden mb-1">
+                    <div className="w-12 h-16 bg-zinc-800 rounded overflow-hidden mb-1">
                       <img
                         src={chain.bridgeCard.image}
                         alt={chain.bridgeCard.name}
@@ -222,7 +222,7 @@ const BridgeResults: React.FC<BridgeResultsProps> = ({
                         loading="lazy"
                       />
                     </div>
-                    <div className="text-xs text-zinc-400">Bridge</div>
+                    <div className="text-[11px] text-zinc-400">Bridge</div>
                   </div>
 
                   {/* Connection 2 */}
@@ -235,7 +235,7 @@ const BridgeResults: React.FC<BridgeResultsProps> = ({
 
                   {/* Target Card */}
                   <div className="text-center">
-                    <div className="w-12 h-16 bg-zinc-600 rounded overflow-hidden mb-1">
+                    <div className="w-12 h-16 bg-zinc-800 rounded overflow-hidden mb-1">
                       <img
                         src={chain.targetCard.image}
                         alt={chain.targetCard.name}
@@ -243,13 +243,13 @@ const BridgeResults: React.FC<BridgeResultsProps> = ({
                         loading="lazy"
                       />
                     </div>
-                    <div className="text-xs text-zinc-400">Target</div>
+                    <div className="text-[11px] text-zinc-400">Target</div>
                   </div>
                 </div>
               </div>
 
               {/* Bridge Card Details */}
-              <div className="bg-zinc-800 rounded-lg p-4">
+              <div className="bg-zinc-950/40 rounded-lg p-4 border border-zinc-900">
                 <div className="flex items-start gap-4">
                   <img
                     src={chain.bridgeCard.image}
@@ -257,8 +257,8 @@ const BridgeResults: React.FC<BridgeResultsProps> = ({
                     className="w-20 h-28 object-cover rounded"
                     loading="lazy"
                   />
-                  <div className="flex-1">
-                    <h4 className="text-lg font-semibold text-white mb-2">
+                  <div className="flex-1 min-w-0">
+                    <h4 className="text-base font-semibold text-white mb-2 truncate" title={chain.bridgeCard.name}>
                       {chain.bridgeCard.name}
                     </h4>
                     
@@ -290,7 +290,7 @@ const BridgeResults: React.FC<BridgeResultsProps> = ({
                     </div>
 
                     {/* Connection Summary */}
-                    <div className="mt-3 p-3 bg-zinc-700 rounded border border-zinc-600">
+                    <div className="mt-3 p-3 bg-zinc-900/70 rounded border border-zinc-800">
                       <div className="text-xs text-zinc-400 mb-1">Chain Summary:</div>
                       <div className="text-sm text-zinc-200">
                         Shares <Badge className={`${getStatBadgeColor(chain.handToBridgeConnection)} mx-1`}>
@@ -310,9 +310,9 @@ const BridgeResults: React.FC<BridgeResultsProps> = ({
         </div>
 
         {/* Usage Instructions */}
-        <div className="bg-zinc-900 border border-zinc-700 rounded-lg p-4">
-          <h4 className="font-semibold text-zinc-300 mb-2">How to Use Small World:</h4>
-          <ol className="text-sm text-zinc-200 space-y-1 list-decimal list-inside">
+        <div className="bg-zinc-900/60 border border-zinc-800 rounded-lg p-4">
+          <h4 className="font-semibold text-zinc-200 mb-2">How to Use Small World:</h4>
+          <ol className="text-sm text-zinc-400 space-y-1 list-decimal list-inside">
             <li>Reveal {handCard.name} from your hand</li>
             <li>Choose one of the bridge cards above from your deck</li>
             <li>Banish {handCard.name} from your hand face-down</li>
