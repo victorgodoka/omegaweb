@@ -14,7 +14,8 @@ export default defineConfig({
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),
-      '@/ui': path.resolve(__dirname, './ui')
+      '@/ui': path.resolve(__dirname, './ui'),
+      buffer: 'buffer'
     }
   },
   build: {
@@ -92,7 +93,8 @@ export default defineConfig({
       'react', 
       'react-dom', 
       'react-router',
-      'hoist-non-react-statics'
+      'hoist-non-react-statics',
+      'buffer'
     ],
     exclude: ['@iconify/react', '@emotion/react', '@emotion/styled'],
     // Force re-bundling of problematic dependencies

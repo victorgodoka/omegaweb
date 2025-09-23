@@ -43,6 +43,18 @@ export const fetchApi = async <T = any>(
       ...options,
     });
 
+    // Handle 304 Not Modified - no body content
+    if (response.status === 304) {
+      console.log('Received 304 Not Modified - cached data unchanged');
+      return { 
+        data: undefined as T, 
+        ok: false, // Mark as not ok so component knows to force refresh
+        success: false,
+        message: 'Data not modified - force refresh needed',
+        status: response.status 
+      };
+    }
+
     const data = await response.json();
     
     if (!response.ok) {
@@ -95,6 +107,41 @@ export const api = {
     
     delete: <T = any>(endpoint: string, options?: RequestInit) => 
       fetchApi<T>(endpoint, { ...options, method: 'DELETE' }),
+    
+    // Deck analytics endpoint
+    getDeckAnalytics: <T = any>(forceUpdate: boolean = false) => 
+      fetchApi<T>(`deck-analytics${forceUpdate ? '?update=y' : ''}`, { method: 'GET' }),
+    
+    // Encode deck arrays to get deck code
+    encodeDeck: async (deckData: { main: number[], side: number[], extra: number[] }) => {
+      try {
+        const response = await fetchApi<any>(`/convert`, { 
+          method: 'POST',
+          body: JSON.stringify(deckData)
+        });
+        
+        // fetchApi returns ApiResponse<T>, so we just return it directly
+        return response;
+      } catch (error) {
+        console.error('Encode API Error:', error);
+        return { ok: false, message: error instanceof Error ? error.message : 'Unknown error' };
+      }
+    },
+
+    // Decode deck code to get deck data
+    decodeDeck: async (deckCode: string) => {
+      try {
+        const response = await fetchApi<any>(`/convert?code=${encodeURIComponent(deckCode)}`, { 
+          method: 'GET' 
+        });
+        
+        // fetchApi returns ApiResponse<T>, so we just return it directly
+        return response;
+      } catch (error) {
+        console.error('Decode API Error:', error);
+        return { ok: false, message: error instanceof Error ? error.message : 'Unknown error' };
+      }
+    },
   },
 
   // External API helpers
@@ -203,8 +250,17 @@ export const api = {
           const token = 'fc251ea703476dea9f037898611a14fa3d3e4cde99f6b3b81b4e25';
           const url = `${API_ENDPOINTS.OMEGA_DECKS}/convert?token=${token}&pretty&list=${encodeURIComponent(deckCode)}`;
           const response = await fetch(url);
-          if (!response.ok) throw new Error('Failed to convert deck');
-          return { data: await response.json(), ok: true };
+          const data = await response.json();
+          
+          if (!response.ok || !data.success) {
+            return { 
+              ok: false, 
+              data,
+              message: data.meta?.error || 'Failed to convert deck' 
+            };
+          }
+          
+          return { data, ok: true };
         } catch (error) {
           console.error('Omega Decks API Error:', error);
           return { ok: false, message: error instanceof Error ? error.message : 'Unknown error' };

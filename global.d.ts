@@ -44,9 +44,9 @@ declare interface YGOAPI {
   card_images: CardImage[]
   card_prices: CardPrice[]
   misc_info: MiscInfo[]
-  banlist_info: {
-    ban_ocg: string
-    ban_tcg: string
+  banlist_info?: {
+    ban_ocg?: "Limited" | "Forbidden" | "Semi-Limited"
+    ban_tcg?: "Limited" | "Forbidden" | "Semi-Limited"
   }
 }
 

@@ -15,7 +15,7 @@ const NotFound = lazy(() => import("@/pages/NotFound"));
 const CatchDiscordError = lazy(() => import("@/components/CatchDiscord"));
 const PDFGenerator = lazy(() => import("@/pages/PDFGenerator"));
 const HypergeometricCalculator = lazy(() => import("@/pages/HypergeometricCalculator"));
-const SmallWorldResolver = lazy(() => import("@/pages/SmallWorldResolver"));
+const DeckEditor = lazy(() => import("@/pages/DeckEditor"));
 
 export const router = createHashRouter([
   {
@@ -34,7 +34,9 @@ export const router = createHashRouter([
       { path: "/not-found", Component: NotFound, id: "notfound" },
       { path: "/pdf-decklist", Component: PDFGenerator },
       { path: "/calculator", Component: HypergeometricCalculator },
-      { path: "/small-world", Component: SmallWorldResolver },
+      { path: "/deck-editor", Component: DeckEditor },
+      // { path: "/small-world", Component: SmallWorldResolver },
+      // { path: "/card-maker", Component: CardMaker },
       { path: "*", Component: CatchDiscordError },
     ],
   },

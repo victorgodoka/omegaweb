@@ -4,10 +4,10 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "vite",
-    "build": "tsc -b && vite build",
+    "dev": "vite --mode development",
+    "build": "tsc -b && vite build --mode production",
     "lint": "eslint .",
-    "preview": "vite preview",
+    "preview": "vite preview --mode production",
     "postinstall": "flowbite-react patch"
   },
   "dependencies": {
@@ -18,6 +18,7 @@
     "@mui/x-charts": "^8.9.0",
     "@sglara/cn": "^1.0.0",
     "@tailwindcss/vite": "^4.1.11",
+    "buffer": "^6.0.3",
     "flowbite-react": "^0.11.9",
     "i18next": "^25.3.2",
     "idb": "^8.0.3",
@@ -29,7 +30,8 @@
     "react-router": "^7.7.0",
     "react-toastify": "^11.0.5",
     "recharts": "^3.1.2",
-    "tailwindcss": "^4.1.11"
+    "tailwindcss": "^4.1.11",
+    "ydke": "^1.1.0"
   },
   "devDependencies": {
     "@eslint/js": "^9.30.1",

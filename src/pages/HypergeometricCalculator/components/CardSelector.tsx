@@ -37,24 +37,6 @@ const CardSelector: React.FC<CardSelectorProps> = ({
   // Helper: is monster (main-deck) card
   const isMonster = useCallback((card: Cards) => !card.isSpell && !card.isTrap, []);
 
-  // Unique monster cards only for target selection list
-  const uniqueMonsterCards = useMemo(() => {
-    return uniqueCards.filter(isMonster);
-  }, [uniqueCards, isMonster]);
-
-  // Filter and sort UNIQUE monster cards based on search term
-  const filteredUniqueMonsterCards = useMemo(() => {
-    const filtered = uniqueMonsterCards.filter(card => 
-      (card.name || `Card ${card.id}`).toLowerCase().includes(searchTerm.toLowerCase()) ||
-      card.id.toString().includes(searchTerm)
-    );
-    return filtered.sort((a, b) => (getCardName(a)).localeCompare(getCardName(b)));
-  }, [uniqueMonsterCards, searchTerm]);
-
-
-
-  // Selection is handled via addOneCopy/removeOneCopy quantity controls
-
   // Handle searcher card selection for current group (by instance ID)
   const toggleSearcherSelection = (instanceId: string) => {
     setSelectedSearchers(prev => 
@@ -147,10 +129,6 @@ const CardSelector: React.FC<CardSelectorProps> = ({
     return instanceIndex >= (usedAsSearcherCount + usedAsTargetCount);
   };
 
-
-
-
-
   // Add new target group
   const handleAddGroup = () => {
     if (groupName.trim() && selectedCards.length > 0) {
@@ -218,7 +196,19 @@ const CardSelector: React.FC<CardSelectorProps> = ({
     return card.name || `Card ${card.id}`;
   };
 
+  // Unique monster cards only for target selection list
+  const uniqueMonsterCards = useMemo(() => {
+    return uniqueCards.filter(isMonster);
+  }, [uniqueCards, isMonster]);
 
+  // Filter and sort UNIQUE monster cards based on search term
+  const filteredUniqueMonsterCards = useMemo(() => {
+    const filtered = uniqueMonsterCards.filter(card => 
+      (card.name || `Card ${card.id}`).toLowerCase().includes(searchTerm.toLowerCase()) ||
+      card.id.toString().includes(searchTerm)
+    );
+    return filtered.sort((a, b) => (getCardName(a)).localeCompare(getCardName(b)));
+  }, [uniqueMonsterCards, searchTerm]);
 
   // Get how many copies of a card are already used in target groups
   const getUsedCopiesCount = (cardId: number) => {

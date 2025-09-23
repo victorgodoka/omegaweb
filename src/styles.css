@@ -3,6 +3,11 @@
 @source '../.flowbite-react/class-list.json';
 @import 'tailwindcss-animated';
 
+@font-face {
+  font-family: MatrixBoldSmallCaps;
+  src: url('/fonts/MatrixBoldSmallCaps.otf') format('opentype');
+}
+
 .controls {
   display: flex;
   border: 1px solid #ccc;

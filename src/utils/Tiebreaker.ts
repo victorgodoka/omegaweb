@@ -80,12 +80,19 @@ export function calculateTiebreakers(data: TournamentData): PlayerStats[] {
     // Calculate sum of squares of lost rounds (DDD)
     const sumOfSquaresOfLostRounds = lostRounds.reduce((sum, round) => sum + (round * round), 0);
 
-    // Format tiebreaker: AABBBCCCDDD
-    const AA = totalPoints.toString().padStart(2, '0');
-    // Convert percentages to tenths (e.g., 72.6% becomes 726)
-    const BBB = Math.round(totalOpponentWinPercentage * 10).toString().padStart(3, '0');
-    const CCC = Math.round(totalOpponentOpponentWinPercentage * 10).toString().padStart(3, '0');
-    const DDD = sumOfSquaresOfLostRounds.toString().padStart(3, '0');
+    // Format tiebreaker: AABBBCCCDDD (exactly 11 digits)
+    // AA: Always 2 digits (00-99, cap at 99)
+    const AA = Math.min(totalPoints, 99).toString().padStart(2, '0');
+    
+    // BBB: Convert percentage to tenths and cap at 999 (e.g., 72.6% becomes 726, max 999)
+    const BBB = Math.min(Math.round(totalOpponentWinPercentage * 10), 999).toString().padStart(3, '0');
+    
+    // CCC: Convert percentage to tenths and cap at 999
+    const CCC = Math.min(Math.round(totalOpponentOpponentWinPercentage * 10), 999).toString().padStart(3, '0');
+    
+    // DDD: Cap at 999 to ensure 3 digits max
+    const DDD = Math.min(sumOfSquaresOfLostRounds, 999).toString().padStart(3, '0');
+    
     const tiebreaker = `${AA}${BBB}${CCC}${DDD}`;
 
     // Calculate win percentage for display

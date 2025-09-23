@@ -25,7 +25,8 @@
     "leaderboard": "Leaderboard",
     "statistics": "Statistics",
     "pdf_decklist": "Export Decklist to PDF",
-    "calculator": "Hypergeometric Calculator"
+    "calculator": "Hypergeometric Calculator",
+    "deck_statistics": "Deck Statistics"
   },
   "home": {
     "title": "Latest Forum Posts",
@@ -296,9 +297,11 @@
     "results": {
       "none": "No results to display",
       "copies_in_deck": "{{count}} copies in deck",
-      "exactly_n": "Exactly {{count}} card{{count !== 1 ? 's' : ''}} in {{handSize}} cards:",
+      "exactly_n_one": "Exactly {{count}} card in {{handSize}} cards:",
+      "exactly_n_other": "Exactly {{count}} cards in {{handSize}} cards:",
       "range_n": "{{min}}-{{max}} cards in {{handSize}} cards:",
-      "at_least_n": "At least {{count}} card{{count !== 1 ? 's' : ''}} in {{handSize}} cards:",
+      "at_least_n_one": "At least {{count}} card in {{handSize}} cards:",
+      "at_least_n_other": "At least {{count}} cards in {{handSize}} cards:",
       "with_searchers": "With searchers:",
       "at_least_including_searchers": "At least {{count}} (including searchers)",
       "improvement": "+{{amount}} improvement"
@@ -395,7 +398,8 @@
     "selector": {
       "heading": "Target Cards",
       "add_group": "Add Group",
-      "want_range": "Want {{range}} card{{count !== 1 ? 's' : ''}} from this group",
+      "want_range_one": "Want {{range}} card from this group",
+      "want_range_other": "Want {{range}} cards from this group",
       "target_cards_label": "Target Cards:",
       "searchers_label": "Searchers:",
       "form": {
@@ -439,5 +443,31 @@
       "save_and_share": "Save & Share",
       "login_to_save_and_share": "Login to Save & Share"
     }
+  },
+  "deck_statistics": {
+    "title": "Deck Statistics",
+    "subtitle": "Performance analysis of the most popular archetypes",
+    "error_loading": "Error loading statistics",
+    "retry": "Try Again",
+    "total_matches": "Total Matches",
+    "active_archetypes": "Active Archetypes",
+    "banlist_period": "Banlist Period",
+    "data_period": "Data Period",
+    "force_refresh": "Force Refresh",
+    "refreshing": "Refreshing...",
+    "last_updated": "Last Updated",
+    "last_refresh": "Last Refresh",
+    "period_info": "Period Info",
+    "no_data": "No deck data available",
+    "matches": "Matches",
+    "cards_in_archetype": "cards in archetype",
+    "win_rate": "Win Rate",
+    "page_info": "Showing {{start}}-{{end}} of {{total}} decks",
+    "previous_page": "Previous",
+    "next_page": "Next",
+    "search_placeholder": "Search archetypes...",
+    "search_results": "{{results}} of {{total}} decks match \"{{term}}\"",
+    "wins": "Wins",
+    "losses": "Losses"
   }
 }

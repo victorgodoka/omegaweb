@@ -27,7 +27,6 @@ const NavbarWrapper: React.FC = () => {
     { to: "/leaderboards", label: t("nav.leaderboard"), icon: <Icon icon="material-symbols:leaderboard" /> },
     { to: "/statistics", label: t("nav.statistics"), icon: <Icon icon="picon:chart" /> },
     { to: "/calculator", label: t("nav.calculator"), icon: <Icon icon="tabler:math" /> },
-    { to: "/small-world", label: "Small World", icon: <Icon icon="game-icons:card-exchange" /> },
     { to: "/pdf-decklist", label: t("nav.pdf_decklist"), icon: <Icon icon="teenyicons:pdf-outline" /> },
   ];
 

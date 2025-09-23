@@ -77,16 +77,10 @@ export const decodeDuelData = (data: number, t?: (key: string) => string) => {
 
 export const getTopCut = (n: number): number => {
   switch (true) {
-    case n >= 4 && n <= 32:
+    case n >= 4 && n < 8:
       return 4
-    case n >= 33 && n <= 128:
+    case n >= 8:
       return 8
-    case n >= 129 && n <= 512:
-      return 16
-    case n >= 513 && n <= 2048:
-      return 32
-    case n >= 2049:
-      return 64
     default:
       return n
   }

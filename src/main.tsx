@@ -6,6 +6,11 @@ import Loading from "@/ui/Loading";
 import { router } from "./router";
 import { Suspense } from "react";
 import { RouterProvider } from "react-router";
+import { Buffer } from 'buffer';
+
+// Add Buffer polyfill to global scope for Node.js libraries
+(window as any).global = window;
+(window as any).Buffer = Buffer;
 
 // Ensure i18n is fully initialized before rendering
 const renderApp = () => {

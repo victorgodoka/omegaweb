@@ -25,7 +25,8 @@
     "leaderboard": "Classificação Ranqueada",
     "statistics": "Estatísticas",
     "pdf_decklist": "Exportar Decklist para PDF",
-    "calculator": "Calculadora Hipergeométrica"
+    "calculator": "Calculadora Hipergeométrica",
+    "deck_statistics": "Estatísticas de Decks"
   },
   "leaderboard_page": {
     "error_title": "Erro",
@@ -295,9 +296,11 @@
     "results": {
       "none": "Nenhum resultado para exibir",
       "copies_in_deck": "{{count}} cópias no deck",
-      "exactly_n": "Exatamente {{count}} carta{{count !== 1 ? 's' : ''}} em {{handSize}} cartas:",
+      "exactly_n_one": "Exatamente {{count}} carta em {{handSize}} cartas:",
+      "exactly_n_other": "Exatamente {{count}} cartas em {{handSize}} cartas:",
       "range_n": "{{min}}-{{max}} cartas em {{handSize}} cartas:",
-      "at_least_n": "Pelo menos {{count}} carta{{count !== 1 ? 's' : ''}} em {{handSize}} cartas:",
+      "at_least_n_one": "Pelo menos {{count}} carta em {{handSize}} cartas:",
+      "at_least_n_other": "Pelo menos {{count}} cartas em {{handSize}} cartas:",
       "with_searchers": "Com buscadoras:",
       "at_least_including_searchers": "Pelo menos {{count}} (incluindo buscadoras)",
       "improvement": "+{{amount}} de melhoria"
@@ -394,7 +397,8 @@
     "selector": {
       "heading": "Cartas Alvo",
       "add_group": "Adicionar Grupo",
-      "want_range": "Deseja {{range}} carta{{count !== 1 ? 's' : ''}} deste grupo",
+      "want_range_one": "Deseja {{range}} carta deste grupo",
+      "want_range_other": "Deseja {{range}} cartas deste grupo",
       "target_cards_label": "Cartas Alvo:",
       "searchers_label": "Buscadoras:",
       "form": {
@@ -438,5 +442,31 @@
       "save_and_share": "Salvar e Compartilhar",
       "login_to_save_and_share": "Faça login para Salvar e Compartilhar"
     }
+  },
+  "deck_statistics": {
+    "title": "Estatísticas de Decks",
+    "subtitle": "Análise de performance dos arquetipos mais populares",
+    "error_loading": "Erro ao carregar estatísticas",
+    "retry": "Tentar Novamente",
+    "total_matches": "Partidas Totais",
+    "active_archetypes": "Arquetipos Ativos",
+    "banlist_period": "Período da Banlist",
+    "data_period": "Período dos Dados",
+    "force_refresh": "Atualizar Dados",
+    "refreshing": "Atualizando...",
+    "last_updated": "Última Atualização",
+    "last_refresh": "Última Consulta",
+    "period_info": "Informações do Período",
+    "no_data": "Nenhum dado de deck disponível",
+    "matches": "Partidas",
+    "cards_in_archetype": "cartas no arquetipo",
+    "win_rate": "Taxa de Vitória",
+    "page_info": "Mostrando {{start}}-{{end}} de {{total}} decks",
+    "previous_page": "Anterior",
+    "next_page": "Próximo",
+    "search_placeholder": "Buscar arquetipos...",
+    "search_results": "{{results}} de {{total}} decks correspondem a \"{{term}}\"",
+    "wins": "Vitórias",
+    "losses": "Derrotas"
   }
 }

@@ -24,6 +24,9 @@ i18n
     react: {
       useSuspense: false,
     },
+    // Enable pluralization
+    pluralSeparator: '_',
+    contextSeparator: '_',
     // Force synchronous initialization
     initImmediate: false,
   });
