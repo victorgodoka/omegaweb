@@ -20,23 +20,19 @@ export interface PlayerStats {
 
 export function calculateTiebreakers(data: TournamentData): PlayerStats[] {
   const playerStats = data.players.map(player => {
-    // Get basic match results from table data
+    // Get match results from table data (already includes BYEs)
     const tableData = data.table.find(t => t.id === player.id);
     const wins = tableData?.wins || 0;
     const draws = tableData?.draws || 0;
     const losses = tableData?.loses || 0;
 
-    // Calculate total points (AA): Win = 3, Draw = 1, Loss = 0
-    const totalPoints = wins * 3 + draws * 1;
-
-    // Get all opponents this player faced
+    // Get all opponents this player faced and track lost rounds
     const opponents: string[] = [];
     const lostRounds: number[] = [];
 
     data.rounds.forEach((round, roundIndex) => {
-      // Check for BYE
+      // Skip BYE rounds (no opponent to track)
       if (round.bye === player.id) {
-        // BYE counts as a win but no opponent to track
         return;
       }
 
@@ -57,6 +53,9 @@ export function calculateTiebreakers(data: TournamentData): PlayerStats[] {
         }
       });
     });
+
+    // Calculate total match points (AA): Win = 3, Draw = 1, Loss = 0
+    const totalPoints = (wins * 3) + (draws * 1);
 
     // Calculate opponent's match-win percentage (BBB)
     let totalOpponentWinPercentage = 0;
@@ -83,12 +82,15 @@ export function calculateTiebreakers(data: TournamentData): PlayerStats[] {
 
     // Format tiebreaker: AABBBCCCDDD
     const AA = totalPoints.toString().padStart(2, '0');
+    // Convert percentages to tenths (e.g., 72.6% becomes 726)
     const BBB = Math.round(totalOpponentWinPercentage * 10).toString().padStart(3, '0');
     const CCC = Math.round(totalOpponentOpponentWinPercentage * 10).toString().padStart(3, '0');
     const DDD = sumOfSquaresOfLostRounds.toString().padStart(3, '0');
     const tiebreaker = `${AA}${BBB}${CCC}${DDD}`;
 
-    const winPercentage = opponents.length > 0 ? ((wins / (wins + draws + losses)) * 100).toFixed(2) : "0.00";
+    // Calculate win percentage for display
+    const totalMatches = wins + draws + losses;
+    const winPercentage = totalMatches > 0 ? ((wins / totalMatches) * 100).toFixed(2) : "0.00";
 
     return {
       id: player.id,
@@ -112,17 +114,17 @@ export function calculateTiebreakers(data: TournamentData): PlayerStats[] {
 }
 
 function calculatePlayerWinPercentage(playerId: string, data: TournamentData): number {
-  const player = data.players.find(player => player.id === playerId);
-  if (!player) return 0;
-
   const tableData = data.table.find(t => t.id === playerId);
   if (!tableData) return 0;
 
   const wins = tableData.wins || 0;
   const draws = tableData.draws || 0;
   const losses = tableData.loses || 0;
+  const totalMatches = wins + draws + losses;
 
-  return (wins / (wins + draws + losses)) * 100;
+  if (totalMatches === 0) return 0;
+
+  return (wins / totalMatches) * 100;
 }
 
 function calculateOpponentOpponentWinPercentage(playerId: string, data: TournamentData): number {
@@ -130,6 +132,11 @@ function calculateOpponentOpponentWinPercentage(playerId: string, data: Tourname
   const opponents: string[] = [];
 
   data.rounds.forEach(round => {
+    // Skip BYE rounds
+    if (round.bye === playerId) {
+      return;
+    }
+
     round.rooms.forEach(room => {
       if (room.duelist1 === playerId) {
         opponents.push(room.duelist2);
@@ -150,6 +157,11 @@ function calculateOpponentOpponentWinPercentage(playerId: string, data: Tourname
     const opponentOpponents: string[] = [];
     
     data.rounds.forEach(round => {
+      // Skip BYE rounds
+      if (round.bye === opponentId) {
+        return;
+      }
+
       round.rooms.forEach(room => {
         if (room.duelist1 === opponentId) {
           opponentOpponents.push(room.duelist2);
