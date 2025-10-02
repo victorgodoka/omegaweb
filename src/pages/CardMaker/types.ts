@@ -28,7 +28,7 @@ export interface CardData {
   artworkUrl: string;
   artworkFile: File | null;
   pendulumScale?: number | null;
-  linkRating?: number | null;
+  linkval?: number | null;
   linkArrows: LinkArrow[];
   isEffect?: boolean;
   isXyz?: boolean;

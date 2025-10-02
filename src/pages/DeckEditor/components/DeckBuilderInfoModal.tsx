@@ -112,18 +112,92 @@ const DeckBuilderInfoModal: React.FC<DeckBuilderInfoModalProps> = ({
           </div>
         </div>
 
+        {/* Advanced Search & Filters */}
+        <div className="bg-cyan-900/30 border border-cyan-500/30 rounded-lg p-4">
+          <div className="flex items-start gap-3">
+            <Icon icon="mdi:filter" className="text-cyan-400 text-xl flex-shrink-0 mt-0.5" />
+            <div>
+              <h3 className="text-cyan-400 font-semibold mb-2">Advanced Search & Filters</h3>
+              <p className="text-sm leading-relaxed mb-3">
+                Use powerful search and filtering tools to find exactly the cards you need:
+              </p>
+              
+              <div className="space-y-3 text-sm">
+                <div>
+                  <h4 className="font-semibold text-cyan-300 mb-1">Search Features:</h4>
+                  <ul className="list-disc list-inside ml-4 space-y-1">
+                    <li><strong>Text Search:</strong> Search by card name or description</li>
+                    <li><strong>Independent Filtering:</strong> Use filters without search text</li>
+                    <li><strong>Real-time Results:</strong> See results as you type (300ms delay)</li>
+                    <li><strong>Performance Optimized:</strong> Shows 50 cards initially, load more as needed</li>
+                  </ul>
+                </div>
+
+                <div>
+                  <h4 className="font-semibold text-cyan-300 mb-1">Filter Categories:</h4>
+                  <ul className="list-disc list-inside ml-4 space-y-1">
+                    <li><strong>Card Types:</strong> Monsters, Spells, Traps, Extra Deck (quick buttons)</li>
+                    <li><strong>Monster Properties:</strong> Attribute, Race, Level, ATK/DEF ranges</li>
+                    <li><strong>Monster Types:</strong> Effect, Normal, Fusion, Synchro, Xyz, Link, etc.</li>
+                    <li><strong>Spell/Trap Subtypes:</strong> Normal, Quick-Play, Continuous, Counter, etc.</li>
+                    <li><strong>Banlist Status:</strong> Unlimited, Forbidden, Limited, Semi-Limited</li>
+                    <li><strong>Genesys Points:</strong> Filter by point values in TCG Genesys format</li>
+                  </ul>
+                </div>
+
+                <div>
+                  <h4 className="font-semibold text-cyan-300 mb-1">Filter Interface:</h4>
+                  <ul className="list-disc list-inside ml-4 space-y-1">
+                    <li><strong>Visual Indicators:</strong> Filter button turns purple with red dot when active</li>
+                    <li><strong>Mobile:</strong> Fullscreen filter panel with backdrop</li>
+                    <li><strong>Desktop:</strong> Side panel slides from right (384px width)</li>
+                    <li><strong>Format Aware:</strong> Shows relevant options for selected format</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
         {/* How to Use */}
         <div className="bg-green-900/30 border border-green-500/30 rounded-lg p-4">
           <div className="flex items-start gap-3">
             <Icon icon="mdi:help-circle" className="text-green-400 text-xl flex-shrink-0 mt-0.5" />
             <div>
               <h3 className="text-green-400 font-semibold mb-2">How to Use the Deck Builder</h3>
-              <ul className="text-sm space-y-1 list-disc list-inside ml-4">
-                <li><strong>Click cards</strong> to add them to your deck</li>
-                <li><strong>Ctrl+Click</strong> to add cards directly to your side deck</li>
-                <li>Use <strong>filters</strong> to find specific card types, attributes, or levels</li>
-                <li>Select <strong>TCG Genesys</strong> format to enable point system and restrictions</li>
-              </ul>
+              
+              <div className="space-y-3 text-sm">
+                <div>
+                  <h4 className="font-semibold text-green-300 mb-1">Card Interactions:</h4>
+                  <ul className="list-disc list-inside ml-4 space-y-1">
+                    <li><strong>Left Click:</strong> Add cards to main/extra deck (based on card type)</li>
+                    <li><strong>Ctrl+Click:</strong> Force add cards directly to side deck</li>
+                    <li><strong>Right Click:</strong> Open detailed card modal with full information</li>
+                    <li><strong>Deck Cards:</strong> Click deck cards to remove them</li>
+                  </ul>
+                </div>
+
+                <div>
+                  <h4 className="font-semibold text-green-300 mb-1">Search & Filter Tips:</h4>
+                  <ul className="list-disc list-inside ml-4 space-y-1">
+                    <li><strong>Search Only:</strong> Type card names or descriptions</li>
+                    <li><strong>Filter Only:</strong> Use filters without entering search text</li>
+                    <li><strong>Combined:</strong> Use search + filters together for precise results</li>
+                    <li><strong>Quick Filters:</strong> Use card type buttons for instant filtering</li>
+                    <li><strong>Clear Filters:</strong> "Clear All" button resets all filter options</li>
+                  </ul>
+                </div>
+
+                <div>
+                  <h4 className="font-semibold text-green-300 mb-1">Format Selection:</h4>
+                  <ul className="list-disc list-inside ml-4 space-y-1">
+                    <li><strong>TCG/OCG:</strong> Standard formats with banlist restrictions</li>
+                    <li><strong>TCG Genesys:</strong> Point system, no Link/Pendulum cards</li>
+                    <li><strong>Auto-Filtering:</strong> Illegal cards hidden in selected format</li>
+                    <li><strong>Visual Feedback:</strong> Toast notifications for all actions</li>
+                  </ul>
+                </div>
+              </div>
             </div>
           </div>
         </div>

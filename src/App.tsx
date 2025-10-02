@@ -11,6 +11,7 @@ import FooterContainer from "@/components/Footer";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { ToastProvider } from "@/contexts/ToastContext";
 import { ModalProvider } from "@/contexts/ModalContext";
+import { GenesysProvider } from "@/contexts/GenesysContext";
 
 const App = () => {
   const matches = useMatches();
@@ -35,8 +36,10 @@ const App = () => {
         <AuthProvider>
           <ToastProvider>
             <ModalProvider>
-              <ToastContainer />
-              {mainContent}
+              <GenesysProvider>
+                <ToastContainer />
+                {mainContent}
+              </GenesysProvider>
             </ModalProvider>
           </ToastProvider>
         </AuthProvider>

@@ -1,4 +1,4 @@
-import { getCardGenesysPoints } from '@/utils/Genesys';
+import { useGenesys } from '@/contexts/GenesysContext';
 import type { Card } from '../types';
 import { toURL } from 'ydke';
 import { api } from '@/utils/Api';
@@ -32,6 +32,16 @@ const DeckStats: React.FC<DeckStatsProps> = ({
   const [deckName, setDeckName] = useState<string>('Duelists Unite Deck');
   const [apiResponse, setApiResponse] = useState<any>(null);
   const { showSuccess, showError } = useToast();
+  const { genesysData } = useGenesys();
+  
+  // Helper function to get Genesys points for a card
+  const getCardGenesysPoints = (cardName: string): number => {
+    // Find card by name to get ID, then look up points
+    const allCards = [...mainDeck, ...extraDeck, ...sideDeck];
+    const deckCard = allCards.find(dc => dc.card.name.toLowerCase() === cardName.toLowerCase());
+    if (!deckCard) return 0;
+    return genesysData[deckCard.card.id] || 0;
+  };
 
   // Reset export state when deck changes
   useEffect(() => {
@@ -317,60 +327,146 @@ const DeckStats: React.FC<DeckStatsProps> = ({
 
   const genesysPoints = calculateGenesysPoints();
   return (
-    <div className="bg-gradient-to-br from-purple-900/40 to-blue-900/40 rounded-xl border border-purple-500/30 p-4">
-      {/* Deck Name Input and Export Button */}
-      <div className="flex flex-col sm:flex-row items-center justify-center gap-3 mb-4">
-        <div className="flex items-center gap-2">
-          <label className="text-sm text-purple-200 whitespace-nowrap">Deck Name:</label>
+    <div className="bg-gradient-to-br from-purple-900/40 to-blue-900/40 rounded-xl border border-purple-500/30 p-3 lg:p-4">
+      {/* Mobile: Compact Layout */}
+      <div className="lg:hidden">
+        {/* Top Row: Deck Name and Export */}
+        <div className="flex items-center gap-2 mb-3">
           <input
             type="text"
             value={deckName}
             onChange={(e) => setDeckName(e.target.value)}
-            className="px-3 py-1 bg-purple-800/50 text-purple-100 rounded border border-purple-500/30 text-sm focus:outline-none focus:ring-2 focus:ring-purple-400 min-w-0"
-            placeholder="Enter deck name"
+            className="flex-1 px-2 py-1 bg-purple-800/50 text-purple-100 rounded border border-purple-500/30 text-sm focus:outline-none focus:ring-2 focus:ring-purple-400"
+            placeholder="Deck name"
           />
+          <button
+            onClick={exportDeck}
+            className="px-3 py-1 bg-indigo-600 hover:bg-indigo-700 text-white rounded text-sm font-medium transition-colors whitespace-nowrap"
+          >
+            Export
+          </button>
         </div>
-        <button
-          onClick={exportDeck}
-          className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-medium transition-colors whitespace-nowrap"
-        >
-          Export Deck
-        </button>
+        
+        {/* Stats Row */}
+        <div className="flex items-center justify-between text-xs">
+          <div className="flex gap-3">
+            <span className="text-yellow-400">{cardTypes.monsters}M</span>
+            <span className="text-green-400">{cardTypes.spells}S</span>
+            <span className="text-red-400">{cardTypes.traps}T</span>
+            <span className="text-purple-200 font-bold">{totalCards}</span>
+          </div>
+          
+          <div className="flex items-center gap-2">
+            {banlist === 'TCG Genesys' && (
+              <span className="text-blue-400 font-bold text-sm">{genesysPoints}pts</span>
+            )}
+            <select
+              value={banlist}
+              onChange={(e) => onBanlistChange(e.target.value as 'TCG' | 'OCG' | 'TCG Genesys')}
+              className="bg-purple-800/50 text-purple-100 rounded px-2 py-1 border border-purple-500/30 text-xs"
+            >
+              <option value="TCG">TCG</option>
+              <option value="OCG">OCG</option>
+              <option value="TCG Genesys">Genesys</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      {/* Desktop: Full Layout */}
+      <div className="hidden lg:block">
+        {/* Deck Name Input and Export Button */}
+        <div className="flex flex-col sm:flex-row items-center justify-center gap-3 mb-4">
+          <div className="flex items-center gap-2">
+            <label className="text-sm text-purple-200 whitespace-nowrap">Deck Name:</label>
+            <input
+              type="text"
+              value={deckName}
+              onChange={(e) => setDeckName(e.target.value)}
+              className="px-3 py-1 bg-purple-800/50 text-purple-100 rounded border border-purple-500/30 text-sm focus:outline-none focus:ring-2 focus:ring-purple-400 min-w-0"
+              placeholder="Enter deck name"
+            />
+          </div>
+          <button
+            onClick={exportDeck}
+            className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-medium transition-colors whitespace-nowrap"
+          >
+            Export Deck
+          </button>
+        </div>
       </div>
 
       {/* Export Options - Show after Export Deck is clicked */}
       {showExportButtons && (
-        <div className="flex flex-wrap gap-2 justify-center mb-4 border-t border-purple-500/30 pt-4">
-          <button
-            onClick={exportToYDK}
-            className="px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded text-sm font-medium transition-colors"
-          >
-            Export to YDK
-          </button>
-          <button
-            onClick={copyYDKEToClipboard}
-            className="px-3 py-1 bg-green-600 hover:bg-green-700 text-white rounded text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            disabled={mainDeck.length === 0 && extraDeck.length === 0 && sideDeck.length === 0}
-          >
-            Copy YDKE to Clipboard
-          </button>
-          <button
-            onClick={copyOmegaCodeToClipboard}
-            className="px-3 py-1 bg-purple-600 hover:bg-purple-700 text-white rounded text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            disabled={!apiResponse?.code}
-          >
-            Copy Deck Code
-          </button>
-          <button
-            onClick={importIntoOmega}
-            className="px-3 py-1 bg-orange-600 hover:bg-orange-700 text-white rounded text-sm font-medium transition-colors"
-          >
-            Import into Omega
-          </button>
+        <div className="border-t border-purple-500/30 pt-3 lg:pt-4 mb-3 lg:mb-4">
+          {/* Mobile: Compact Export Options */}
+          <div className="lg:hidden">
+            <div className="grid grid-cols-2 gap-2 mb-2">
+              <button
+                onClick={exportToYDK}
+                className="px-2 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded text-xs font-medium transition-colors"
+              >
+                YDK
+              </button>
+              <button
+                onClick={copyYDKEToClipboard}
+                className="px-2 py-1 bg-green-600 hover:bg-green-700 text-white rounded text-xs font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                disabled={mainDeck.length === 0 && extraDeck.length === 0 && sideDeck.length === 0}
+              >
+                YDKE
+              </button>
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                onClick={copyOmegaCodeToClipboard}
+                className="px-2 py-1 bg-purple-600 hover:bg-purple-700 text-white rounded text-xs font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                disabled={!apiResponse?.code}
+              >
+                Code
+              </button>
+              <button
+                onClick={importIntoOmega}
+                className="px-2 py-1 bg-orange-600 hover:bg-orange-700 text-white rounded text-xs font-medium transition-colors"
+              >
+                Import
+              </button>
+            </div>
+          </div>
+          
+          {/* Desktop: Full Export Options */}
+          <div className="hidden lg:flex flex-wrap gap-2 justify-center">
+            <button
+              onClick={exportToYDK}
+              className="px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded text-sm font-medium transition-colors"
+            >
+              Export to YDK
+            </button>
+            <button
+              onClick={copyYDKEToClipboard}
+              className="px-3 py-1 bg-green-600 hover:bg-green-700 text-white rounded text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              disabled={mainDeck.length === 0 && extraDeck.length === 0 && sideDeck.length === 0}
+            >
+              Copy YDKE to Clipboard
+            </button>
+            <button
+              onClick={copyOmegaCodeToClipboard}
+              className="px-3 py-1 bg-purple-600 hover:bg-purple-700 text-white rounded text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              disabled={!apiResponse?.code}
+            >
+              Copy Deck Code
+            </button>
+            <button
+              onClick={importIntoOmega}
+              className="px-3 py-1 bg-orange-600 hover:bg-orange-700 text-white rounded text-sm font-medium transition-colors"
+            >
+              Import into Omega
+            </button>
+          </div>
         </div>
       )}
 
-      <div className="flex flex-wrap gap-8 justify-center items-center">
+      {/* Desktop: Full Stats Layout */}
+      <div className="hidden lg:flex flex-wrap gap-8 justify-center items-center">
         <div>
           <label className="text-sm text-purple-200 block mb-1">Current Banlist</label>
           <div className="text-lg font-semibold text-purple-100">

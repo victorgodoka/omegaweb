@@ -1,6 +1,7 @@
 import type { Deck, Card } from '../types';
 import { DECK_LIMITS, COPY_LIMITS } from '@/utils/const';
-import { getCardGenesysPoints } from '@/utils/Genesys';
+// Note: This utility now needs to be updated to work with the GenesysContext
+// For now, we'll create a temporary function that accepts genesysData as a parameter
 
 export interface DeckValidationResult {
   isValid: boolean;
@@ -15,7 +16,7 @@ export interface CardValidationIssue {
   severity: 'error' | 'warning';
 }
 
-export const validateDeck = (deck: Deck): DeckValidationResult => {
+export const validateDeck = (deck: Deck, genesysData?: { [cardId: number]: number }): DeckValidationResult => {
   const warnings: string[] = [];
   const errors: string[] = [];
 
@@ -48,8 +49,8 @@ export const validateDeck = (deck: Deck): DeckValidationResult => {
   warnings.push(...banlistIssues.filter(issue => issue.severity === 'warning').map(issue => issue.issue));
 
   // Genesys format validation
-  if (deck.banlist === 'TCG Genesys') {
-    const genesysValidation = validateGenesysPoints(deck);
+  if (deck.banlist === 'TCG Genesys' && genesysData) {
+    const genesysValidation = validateGenesysPoints(deck, genesysData);
     warnings.push(...genesysValidation.warnings);
     errors.push(...genesysValidation.errors);
 
@@ -107,7 +108,7 @@ export const validateBanlistCompliance = (deck: Deck): CardValidationIssue[] => 
   return issues;
 };
 
-export const validateGenesysPoints = (deck: Deck): { warnings: string[], errors: string[] } => {
+export const validateGenesysPoints = (deck: Deck, genesysData: { [cardId: number]: number }): { warnings: string[], errors: string[] } => {
   const warnings: string[] = [];
   const errors: string[] = [];
 
@@ -115,7 +116,7 @@ export const validateGenesysPoints = (deck: Deck): { warnings: string[], errors:
   const allCards = [...deck.mainDeck, ...deck.extraDeck, ...deck.sideDeck];
 
   allCards.forEach(deckCard => {
-    const points = getCardGenesysPoints(deckCard.card.name);
+    const points = genesysData[deckCard.card.id] || 0;
     totalPoints += points * deckCard.quantity;
   });
 

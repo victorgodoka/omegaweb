@@ -24,7 +24,7 @@ const Toast: React.FC<ToastProps> = ({
   title,
   message,
   position = 'top-right',
-  duration = 5000,
+  duration = 2000,
   onClose,
   actionButton
 }) => {

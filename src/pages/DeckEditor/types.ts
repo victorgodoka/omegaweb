@@ -111,6 +111,9 @@ export interface CardTypeStats {
   monsters: number;
   spells: number;
   traps: number;
+  main: number;
+  extra: number;
+  side: number;
 }
 
 export interface DeckStats {

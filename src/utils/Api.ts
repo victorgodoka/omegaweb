@@ -282,6 +282,60 @@ export const api = {
           return { ok: false, message: error instanceof Error ? error.message : 'Unknown error' };
         }
       },
+
+      fetchRooms: async () => {
+        try {
+          const response = await fetch(`${API_ENDPOINTS.LOCAL_DECK_SERVER}/room-list`, {
+            method: 'GET',
+          });
+          
+          // Parse the response once and reuse the data
+          const responseData = await response.json();
+          console.log('Room API Response:', responseData);
+          
+          if (!response.ok) {
+            return { 
+              ok: false, 
+              message: responseData.Reason || 'Failed to fetch rooms',
+              code: responseData.Code 
+            };
+          }
+          
+          return { data: responseData, ok: true };
+        } catch (error) {
+          console.error('Local Deck Server Error:', error);
+          return { ok: false, message: error instanceof Error ? error.message : 'Unknown error' };
+        }
+      },
+
+      joinRoom: async (roomId: number, roomSecret?: string) => {
+        try {
+          const url = roomSecret 
+            ? `${API_ENDPOINTS.LOCAL_DECK_SERVER}/join-room/${roomId}/${roomSecret}`
+            : `${API_ENDPOINTS.LOCAL_DECK_SERVER}/join-room/${roomId}`;
+          
+          const response = await fetch(url, {
+            method: 'GET',
+          });
+          
+          // Parse the response once and reuse the data
+          const responseData = await response.json();
+          console.log('Join Room API Response:', responseData);
+          
+          if (!response.ok) {
+            return { 
+              ok: false, 
+              message: responseData.Reason || 'Failed to join room',
+              code: responseData.Code 
+            };
+          }
+          
+          return { data: responseData, ok: true };
+        } catch (error) {
+          console.error('Local Deck Server Error:', error);
+          return { ok: false, message: error instanceof Error ? error.message : 'Unknown error' };
+        }
+      },
     },
   },
 };

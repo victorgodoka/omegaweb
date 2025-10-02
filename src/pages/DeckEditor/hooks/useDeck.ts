@@ -1,7 +1,9 @@
-import { useState, useMemo } from 'react';
+import { useState, useCallback, useMemo } from 'react';
 import type { Card, Deck, CardTypeStats } from '../types';
+import { useGenesys } from '@/contexts/GenesysContext';
 
 export const useDeck = () => {
+  const { ensureData } = useGenesys();
   const [deck, setDeck] = useState<Deck>({
     name: 'New Deck',
     format: 'TCG 15.09.2025',
@@ -20,13 +22,16 @@ export const useDeck = () => {
     const cardTypes: CardTypeStats = {
       monsters: 0,
       spells: 0,
-      traps: 0
+      traps: 0,
+      main: deck.mainDeck.reduce((sum, card) => sum + card.quantity, 0),
+      extra: deck.extraDeck.reduce((sum, card) => sum + card.quantity, 0),
+      side: deck.sideDeck.reduce((sum, card) => sum + card.quantity, 0)
     };
 
     [...deck.mainDeck, ...deck.extraDeck, ...deck.sideDeck].forEach(deckCard => {
-      if (deckCard.card.type.includes('Monster')) cardTypes.monsters += deckCard.quantity;
-      else if (deckCard.card.type.includes('Spell')) cardTypes.spells += deckCard.quantity;
-      else if (deckCard.card.type.includes('Trap')) cardTypes.traps += deckCard.quantity;
+      if (deckCard.card.humanReadableCardType.includes('Monster')) cardTypes.monsters += deckCard.quantity;
+      else if (deckCard.card.humanReadableCardType.includes('Spell')) cardTypes.spells += deckCard.quantity;
+      else if (deckCard.card.humanReadableCardType.includes('Trap')) cardTypes.traps += deckCard.quantity;
     });
 
     const totalValue = [...deck.mainDeck, ...deck.extraDeck, ...deck.sideDeck]
@@ -179,12 +184,17 @@ export const useDeck = () => {
   };
 
   // Handle banlist change
-  const changeBanlist = (banlist: 'TCG' | 'OCG' | 'TCG Genesys') => {
+  const changeBanlist = useCallback(async (banlist: 'TCG' | 'OCG' | 'TCG Genesys') => {
+    // If switching to TCG Genesys, ensure Genesys data is loaded
+    if (banlist === 'TCG Genesys') {
+      await ensureData();
+    }
+    
     setDeck(prevDeck => ({
       ...prevDeck,
       banlist
     }));
-  };
+  }, [ensureData]);
 
   // Change deck name
   const changeDeckName = (name: string) => {

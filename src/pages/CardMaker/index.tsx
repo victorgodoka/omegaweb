@@ -25,7 +25,7 @@ const CardMaker: React.FC = () => {
     artworkUrl: '',
     artworkFile: null,
     pendulumScale: null,
-    linkRating: null,
+    linkval: null,
     linkArrows: []
   });
 
@@ -89,7 +89,7 @@ const CardMaker: React.FC = () => {
       artworkUrl: '',
       artworkFile: null,
       pendulumScale: null,
-      linkRating: null,
+      linkval: null,
       linkArrows: []
     });
     showSuccess('Form reset successfully');

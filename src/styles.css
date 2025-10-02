@@ -77,3 +77,60 @@
 .quill-container .ql-editor.ql-blank::before {
   color: #9ca3af;
 }
+
+/* Beautiful Custom Scrollbars */
+.scrollbar-thin {
+  scrollbar-width: thin;
+  scrollbar-color: #52525b #27272a;
+}
+
+.scrollbar-thin::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.scrollbar-thin::-webkit-scrollbar-track {
+  background: #27272a;
+  border-radius: 4px;
+}
+
+.scrollbar-thin::-webkit-scrollbar-thumb {
+  background: #52525b;
+  border-radius: 4px;
+  border: 1px solid #27272a;
+}
+
+.scrollbar-thin::-webkit-scrollbar-thumb:hover {
+  background: #71717a;
+}
+
+.scrollbar-thin::-webkit-scrollbar-corner {
+  background: #27272a;
+}
+
+/* Purple themed scrollbars for filter panels */
+.scrollbar-purple::-webkit-scrollbar-thumb {
+  background: #9333ea;
+  border-radius: 4px;
+  border: 1px solid #27272a;
+}
+
+.scrollbar-purple::-webkit-scrollbar-thumb:hover {
+  background: #a855f7;
+}
+
+/* Deck scrollbar with gradient effect */
+.scrollbar-deck::-webkit-scrollbar-thumb {
+  background: linear-gradient(45deg, #52525b, #71717a);
+  border-radius: 4px;
+  border: 1px solid #27272a;
+}
+
+.scrollbar-deck::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(45deg, #71717a, #9ca3af);
+}
+
+/* Smooth scrolling for all elements */
+* {
+  scroll-behavior: smooth;
+}
