@@ -153,7 +153,6 @@ const GenesysRoomLobby: React.FC = () => {
         title: 'Spectate Mode',
         duration: 3000
       });
-      console.log('Spectating room:', room.RoomID);
     }
   };
 

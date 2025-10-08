@@ -28,6 +28,8 @@ const NavbarWrapper: React.FC = () => {
     { to: "/statistics", label: t("nav.statistics"), icon: <Icon icon="picon:chart" /> },
     { to: "/calculator", label: t("nav.calculator"), icon: <Icon icon="tabler:math" /> },
     { to: "/pdf-decklist", label: t("nav.pdf_decklist"), icon: <Icon icon="teenyicons:pdf-outline" /> },
+    { to: "/konami-decklist", label: t("nav.konami_decklist"), icon: <Icon icon="si:json-alt-1-line" /> },
+    { to: "/deck-editor", label: t("nav.deck_editor"), icon: <Icon icon="game-icons:card-pick" /> },
   ];
 
   // Precompute click handlers to comply with hooks rules

@@ -70,9 +70,6 @@ const ProfileEdit: React.FC = () => {
           setTwitterUsername(profileData.socialX || '');
           setInstagramUsername(profileData.socialInstagram || '');
           
-          console.log('Profile data loaded:', { currentBio });
-          
-          // Set favorite card if exists
           if (profileData.duelist_favorite && cardStats.length > 0) {
             const card = cardStats.find(c => c.id.toString() === profileData.duelist_favorite);
             if (card) {
@@ -98,8 +95,6 @@ const ProfileEdit: React.FC = () => {
   useEffect(() => {
     if (!editorRef.current || quillRef.current) return;
 
-    console.log('Initializing Quill editor');
-
     const quill = new Quill(editorRef.current, {
       theme: 'snow',
       modules: {
@@ -120,8 +115,6 @@ const ProfileEdit: React.FC = () => {
       setBio(quill.root.innerHTML);
     });
 
-    console.log('Quill editor initialized');
-
     return () => {
       if (quillRef.current) {
         quillRef.current = null;
@@ -132,7 +125,6 @@ const ProfileEdit: React.FC = () => {
   // Set initial content when data is loaded
   useEffect(() => {
     if (quillRef.current && isDataLoaded && bio) {
-      console.log('Setting initial bio content:', bio);
       quillRef.current.clipboard.dangerouslyPasteHTML(bio);
     }
   }, [isDataLoaded]);
@@ -145,7 +137,6 @@ const ProfileEdit: React.FC = () => {
       
       // Only update if content is actually different and not from Quill itself
       if (currentContent !== newContent) {
-        console.log('Updating Quill content with:', newContent);
         quillRef.current.clipboard.dangerouslyPasteHTML(newContent);
       }
     }

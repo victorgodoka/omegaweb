@@ -42,7 +42,6 @@ const Home: React.FC = () => {
   }, []);
 
   const getCategoryById = (categoryId: number): Category | undefined => {
-    console.log(categories)
     return categories.find(cat =>
       cat.id === categoryId || cat.subcategory_ids.includes(categoryId)
     );

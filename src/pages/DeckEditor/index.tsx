@@ -564,25 +564,17 @@ const DeckEditor: React.FC = () => {
       if (content) {
         try {
           const parsedDeck = parseYDKFile(content);
-          console.log('Parsed YDK deck:', parsedDeck);
-
-          // Clear existing deck before importing
           clearDeck();
 
-          // Load cards directly into deck editor
           let cardsAdded = 0;
           let cardsNotFound = 0;
 
-          // Helper function to add cards to deck
           const addCardsToDeck = (cardIds: number[], deckType: 'main' | 'extra' | 'side') => {
             const cardCounts: { [id: number]: number } = {};
 
-            // Count occurrences of each card
             cardIds.forEach(id => {
               cardCounts[id] = (cardCounts[id] || 0) + 1;
             });
-
-            // Add cards to deck
             Object.entries(cardCounts).forEach(([cardIdStr, quantity]) => {
               const cardId = parseInt(cardIdStr);
               const card = cardLibrary.find(c => c.id === cardId);
@@ -692,7 +684,6 @@ const DeckEditor: React.FC = () => {
           showToast('warning', 'No cards were added. Check if the card IDs exist in the library.');
         }
 
-        console.log('Imported deck data:', response.data);
         setShowImportDialog(false);
         setImportCode('');
       } else {

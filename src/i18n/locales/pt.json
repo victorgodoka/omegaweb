@@ -26,7 +26,9 @@
     "statistics": "Estatísticas",
     "pdf_decklist": "Exportar Decklist para PDF",
     "calculator": "Calculadora Hipergeométrica",
-    "deck_statistics": "Estatísticas de Decks"
+    "deck_statistics": "Estatísticas de Decks",
+    "konami_decklist": "Converter Deck para JSON da Konami",
+    "deck_editor": "Editor de Decks"
   },
   "leaderboard_page": {
     "error_title": "Erro",

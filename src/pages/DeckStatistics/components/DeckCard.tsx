@@ -33,8 +33,6 @@ const DeckCard: React.FC<DeckCardProps> = ({ deckStat, rank }) => {
 
   // Generate card images based on archetype IDs
   const getCardImages = () => {
-    console.log('Archetype:', deckStat.archetype.name, 'IDs structure:', deckStat.archetype.ids);
-    
     if (!deckStat.archetype.ids || deckStat.archetype.ids.length === 0) {
       return [];
     }
@@ -45,9 +43,6 @@ const DeckCard: React.FC<DeckCardProps> = ({ deckStat, rank }) => {
     const mainArchetypeCards = deckStat.archetype.ids[0] || [];
     // Get second archetype cards (second array, if exists)
     const secondArchetypeCards = deckStat.archetype.ids[1] || [];
-    
-    console.log('Main archetype cards:', mainArchetypeCards);
-    console.log('Second archetype cards:', secondArchetypeCards);
     
     // Add 2 images from main archetype
     for (let i = 0; i < Math.min(2, mainArchetypeCards.length); i++) {
@@ -81,8 +76,6 @@ const DeckCard: React.FC<DeckCardProps> = ({ deckStat, rank }) => {
       const cardId = mainArchetypeCards[2];
       if (cardId) {
         const imageUrl = `https://ygopro.online/assets/card-images/common/${cardId}.jpg`;
-        console.log(cardStats.find(card => card.id === cardId))
-        
         images.push({
           id: cardId,
           url: imageUrl,

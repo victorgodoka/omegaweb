@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import type { ReactNode } from 'react';
+import { useLoadingContext } from '@/contexts/LoadingContext';
 
 interface GenesysData {
   [cardId: number]: number; // cardId -> points
@@ -16,51 +17,32 @@ interface GenesysContextType {
 
 const GenesysContext = createContext<GenesysContextType | undefined>(undefined);
 
-const CACHE_KEY = 'genesys_points_cache';
+const CACHE_KEY = 'genesys_points_cache_v2';
 const CACHE_DURATION = 2 * 60 * 60 * 1000; // 2 hours in milliseconds
+
+// Hardcoded Genesys points that will be merged with fetched data
+const HARDCODED_GENESYS_POINTS: GenesysData = {
+  18144507: 30, // Add your hardcoded card ID and points here
+  // Add more hardcoded entries as needed:
+  // 12345678: 25,
+  // 87654321: 15,
+};
 
 interface CacheData {
   data: GenesysData;
   timestamp: number;
 }
 
-const parseGenesysConfig = async (configText: string): Promise<GenesysData> => {
-  const genesysData: GenesysData = {};
-  const lines = configText.split('\n');
-  const BATCH_SIZE = 100; // Process 100 lines at a time
-  
-  const processBatch = (startIndex: number): Promise<void> => {
-    return new Promise((resolve) => {
-      const endIndex = Math.min(startIndex + BATCH_SIZE, lines.length);
-      
-      for (let i = startIndex; i < endIndex; i++) {
-        const trimmedLine = lines[i].trim();
-        
-        // Look for lines that match the pattern: $setgenesyspoints [cardId] [points] --[cardName]
-        const match = trimmedLine.match(/^\$setgenesyspoints\s+(\d+)\s+(\d+)\s+--(.+)$/);
-        
-        if (match) {
-          const cardId = parseInt(match[1], 10);
-          const points = parseInt(match[2], 10);
-          
-          if (!isNaN(cardId) && !isNaN(points)) {
-            genesysData[cardId] = points;
-          }
-        }
-      }
-      
-      // Use setTimeout to yield control back to the browser
-      setTimeout(resolve, 0);
-    });
+// Helper function to merge hardcoded points with fetched data
+const mergeGenesysData = (fetchedData: GenesysData): GenesysData => {
+  // Merge hardcoded points with fetched data
+  // Hardcoded points take precedence over fetched data
+  return {
+    ...fetchedData,
+    ...HARDCODED_GENESYS_POINTS
   };
-  
-  // Process all lines in batches
-  for (let i = 0; i < lines.length; i += BATCH_SIZE) {
-    await processBatch(i);
-  }
-  
-  return genesysData;
 };
+
 
 const loadFromCache = (): GenesysData | null => {
   try {
@@ -72,7 +54,8 @@ const loadFromCache = (): GenesysData | null => {
     
     // Check if cache is still valid (within 2 hours)
     if (now - cacheData.timestamp < CACHE_DURATION) {
-      return cacheData.data;
+      // Merge cached data with hardcoded points
+      return mergeGenesysData(cacheData.data);
     }
     
     // Cache expired, remove it
@@ -102,20 +85,22 @@ interface GenesysProviderProps {
 }
 
 export const GenesysProvider: React.FC<GenesysProviderProps> = ({ children }) => {
+  const { dispatch: loadingDispatch } = useLoadingContext();
   const [genesysData, setGenesysData] = useState<GenesysData>({});
   const [isLoading, setIsLoading] = useState(false); // Start as false for lazy loading
   const [error, setError] = useState<string | null>(null);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
-  const [hasInitialized, setHasInitialized] = useState(false);
+  const [hasFetchedFromAPI, setHasFetchedFromAPI] = useState(false); // Track if we've actually fetched from API
 
   const fetchGenesysData = async (): Promise<void> => {
-    // Don't fetch if already initialized and has data
-    if (hasInitialized && Object.keys(genesysData).length > 0) {
+    // Don't fetch if we've already successfully fetched from API
+    if (hasFetchedFromAPI) {
       return;
     }
-
+    
     try {
       setIsLoading(true);
+      loadingDispatch({ type: 'SET_LOADING', payload: true }); // Show global loading
       setError(null);
 
       // Try to load from cache first
@@ -123,41 +108,81 @@ export const GenesysProvider: React.FC<GenesysProviderProps> = ({ children }) =>
       if (cachedData) {
         setGenesysData(cachedData);
         setLastUpdated(new Date());
-        setHasInitialized(true);
+        setHasFetchedFromAPI(true); // Mark as fetched since cache contains API data
         setIsLoading(false);
+        loadingDispatch({ type: 'SET_LOADING', payload: false }); // Hide global loading
         return;
       }
-
-      // Fetch from API
-      const response = await fetch('https://ygo.anihelp.co.uk/public/ALL/Genesys.conf');
+      
+      const response = await fetch('https://raw.githubusercontent.com/Pluani/ygoanihelpbanlists/refs/heads/main/Genesys.conf');
       
       if (!response.ok) {
         throw new Error(`Failed to fetch Genesys config: ${response.status} ${response.statusText}`);
       }
 
       const configText = await response.text();
-      const parsedData = await parseGenesysConfig(configText);
+      
+      // Parse the raw fetched data first (without hardcoded points)
+      const rawFetchedData: GenesysData = {};
+      const lines = configText.split('\n');
+      const BATCH_SIZE = 100;
+      
+      const processBatch = (startIndex: number): Promise<void> => {
+        return new Promise((resolve) => {
+          const endIndex = Math.min(startIndex + BATCH_SIZE, lines.length);
+          
+          for (let i = startIndex; i < endIndex; i++) {
+            const trimmedLine = lines[i].trim();
+            const match = trimmedLine.match(/^\$setgenesyspoints\s+(\d+)\s+(\d+)\s+--(.+)$/);
+            
+            if (match) {
+              const cardId = parseInt(match[1], 10);
+              const points = parseInt(match[2], 10);
+              
+              if (!isNaN(cardId) && !isNaN(points)) {
+                rawFetchedData[cardId] = points;
+              }
+            }
+          }
+          
+          setTimeout(resolve, 0);
+        });
+      };
+      
+      // Process all lines in batches
+      for (let i = 0; i < lines.length; i += BATCH_SIZE) {
+        await processBatch(i);
+      }
 
-      // Save to cache
-      saveToCache(parsedData);
+      // Save raw fetched data to cache (without hardcoded points)
+      saveToCache(rawFetchedData);
 
-      setGenesysData(parsedData);
+      // Merge with hardcoded points for state
+      const mergedData = mergeGenesysData(rawFetchedData);
+      setGenesysData(mergedData);
       setLastUpdated(new Date());
-      setHasInitialized(true);
+      setHasFetchedFromAPI(true); // Mark as successfully fetched
       setError(null);
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred';
       setError(errorMessage);
-      setHasInitialized(true); // Mark as initialized even on error
+      
+      // Even on error, provide hardcoded points if we don't have any data
+      if (Object.keys(genesysData).length === 0) {
+        setGenesysData(HARDCODED_GENESYS_POINTS);
+      }
+      
       console.error('Error fetching Genesys data:', err);
     } finally {
       setIsLoading(false);
+      loadingDispatch({ type: 'SET_LOADING', payload: false }); // Hide global loading
     }
   };
 
   const refetch = async (): Promise<void> => {
     // Clear cache and fetch fresh data
     localStorage.removeItem(CACHE_KEY);
+    setHasFetchedFromAPI(false); // Reset fetch state to allow refetching
     await fetchGenesysData();
   };
 
@@ -167,7 +192,9 @@ export const GenesysProvider: React.FC<GenesysProviderProps> = ({ children }) =>
     if (cachedData) {
       setGenesysData(cachedData);
       setLastUpdated(new Date());
-      setHasInitialized(true);
+      setHasFetchedFromAPI(true); // Cache contains API data, so mark as fetched
+    } else {
+      setGenesysData(HARDCODED_GENESYS_POINTS);
     }
   }, []);
 

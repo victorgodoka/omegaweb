@@ -45,7 +45,6 @@ export const fetchApi = async <T = any>(
 
     // Handle 304 Not Modified - no body content
     if (response.status === 304) {
-      console.log('Received 304 Not Modified - cached data unchanged');
       return { 
         data: undefined as T, 
         ok: false, // Mark as not ok so component knows to force refresh
@@ -291,8 +290,6 @@ export const api = {
           
           // Parse the response once and reuse the data
           const responseData = await response.json();
-          console.log('Room API Response:', responseData);
-          
           if (!response.ok) {
             return { 
               ok: false, 
@@ -320,8 +317,6 @@ export const api = {
           
           // Parse the response once and reuse the data
           const responseData = await response.json();
-          console.log('Join Room API Response:', responseData);
-          
           if (!response.ok) {
             return { 
               ok: false, 
