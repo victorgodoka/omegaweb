@@ -165,7 +165,12 @@
     "logout": "Sair",
     "favorite_card": "Carta Favorita",
     "match_history_private": "O histórico de partidas deste usuário é privado",
-    "no_social_media": "Nenhuma rede social disponível"
+    "no_social_media": "Nenhuma rede social disponível",
+    "performance_title": "Desempenho",
+    "favorite_decks_title": "Decks Favoritos",
+    "rival_decks_title": "Decks Rivais",
+    "match_history_title": "Histórico de Partidas",
+    "match_history_warning": "Seu histórico de partidas está privado mas visível para você"
   },
   "ranks": {
     "iron": "Ferro",

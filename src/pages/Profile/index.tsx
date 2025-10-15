@@ -429,13 +429,17 @@ const Profile: React.FC = () => {
           <div className="space-y-8">
             {/* Performance Overview */}
             <div className="bg-zinc-800 rounded-lg border border-zinc-700 p-4">
-              <h2 className="text-lg font-semibold text-zinc-200 mb-4">Performance</h2>
+              <h2 className="text-lg font-semibold text-zinc-200 mb-4">
+                {t('profile.performance_title')}
+              </h2>
               <WinRateBar wins={currentStats.wins} losses={currentStats.losses} />
             </div>
 
             {/* Most Used Archetypes */}
             <div className="bg-zinc-800 rounded-lg border border-zinc-700 p-4">
-              <h2 className="text-lg font-semibold text-zinc-200 mb-4">Favorite Decks</h2>
+              <h2 className="text-lg font-semibold text-zinc-200 mb-4">
+                {t('profile.favorite_decks_title')}
+              </h2>
               <div className="space-y-3">
                 {statsData.mostUsedArchetypes.slice(0, 5).map((archetype, index) => (
                   <ArchetypeCard key={index} archetype={archetype} />
@@ -445,7 +449,9 @@ const Profile: React.FC = () => {
 
             {/* Frequent Opponents */}
             <div className="bg-zinc-800 rounded-lg border border-zinc-700 p-4">
-              <h2 className="text-lg font-semibold text-zinc-200 mb-4">Rival Decks</h2>
+              <h2 className="text-lg font-semibold text-zinc-200 mb-4">
+                {t('profile.rival_decks_title')}
+              </h2>
               <div className="space-y-3">
                 {statsData.opponentDecks.slice(0, 5).map((opponent, index) => (
                   <OpponentCard key={index} opponent={opponent} />
@@ -457,7 +463,12 @@ const Profile: React.FC = () => {
           {/* Right Column - Match History */}
           <div>
             <div className="bg-zinc-800 rounded-lg border border-zinc-700 p-4">
-              <h2 className="text-lg font-semibold text-zinc-200 mb-4">Match History</h2>
+              <h2 className="text-lg font-semibold text-zinc-200 mb-4">
+                {t('profile.match_history_title')}
+                {customizationData?.hide_history !== 0 && isOwnProfile ? (
+                  <p className="text-xs text-gray-600">({t('profile.match_history_warning')})</p>
+                ) : null}
+              </h2>
               <div className="space-y-3">
                 {customizationData?.hide_history !== 0 && !isOwnProfile ? (
                   <div className="text-center py-8 text-zinc-500">

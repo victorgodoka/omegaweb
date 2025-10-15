@@ -166,7 +166,12 @@
     "logout": "Logout",
     "favorite_card": "Favorite Card",
     "match_history_private": "This user's match history is private",
-    "no_social_media": "No social media links available"
+    "no_social_media": "No social media links available",
+    "performance_title": "Performance",
+    "favorite_decks_title": "Favorite Decks",
+    "rival_decks_title": "Rival Decks",
+    "match_history_title": "Match History",
+    "match_history_warning": "Your match history is set to private but visible to you"
   },
   "ranks": {
     "iron": "Iron",
