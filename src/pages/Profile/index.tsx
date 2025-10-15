@@ -12,6 +12,7 @@ import { PlayerAvatar } from '@/components/PlayerAvatar';
 import { Icon } from '@iconify/react';
 import { getTierInfo } from '@/utils/Functions';
 import { api } from '@/utils/Api';
+import { useAuth } from '@/hooks/useAuth';
 
 // Lazy load heavy components
 const ProfileSkeleton = lazy(() => import('./components/ProfileSkeleton'));
@@ -20,6 +21,7 @@ const MatchHistoryCard = lazy(() => import('./components/MatchHistoryCard'));
 const Profile: React.FC = () => {
   const { t } = useTranslation();
   const { id } = useParams<{ id: string }>();
+  const { userId: currentUserId } = useAuth();
   const [profileData, setProfileData] = useState<ProfileData | null>(null);
   const [statsData, setStatsData] = useState<ProfileStatsData | null>(null);
   const [customizationData, setCustomizationData] = useState<ProfileCustomizationData | null>(null);
@@ -73,6 +75,11 @@ const Profile: React.FC = () => {
     return getTierInfo(currentStats.rating, 'TCG');
   }, [currentStats.rating]);
 
+  // Check if the current user is viewing their own profile
+  const isOwnProfile = useMemo(() => {
+    return currentUserId && id && currentUserId === id;
+  }, [currentUserId, id]);
+
   // Optimized parallel API fetching
   const fetchProfileData = useCallback(async () => {
     if (!id) {
@@ -84,6 +91,11 @@ const Profile: React.FC = () => {
     try {
       setLoading(true);
       setError(null);
+      
+      // Reset all state when navigating to a new profile
+      setProfileData(null);
+      setStatsData(null);
+      setCustomizationData(null);
 
       // Fetch all data in parallel for better performance
       const results = await Promise.allSettled([
@@ -108,11 +120,17 @@ const Profile: React.FC = () => {
         }
       }
 
-      // Handle customization data (optional)
+      // Handle customization data (optional) - reset to null if request fails or returns 404
       if (customizationRes.status === 'fulfilled' && customizationRes.value.ok) {
         if (customizationRes.value.success) {
           setCustomizationData(customizationRes.value.data);
+        } else {
+          // API returned non-success response (like 404) - ensure customization data is null
+          setCustomizationData(null);
         }
+      } else {
+        // Request failed or was rejected - ensure customization data is null
+        setCustomizationData(null);
       }
     } catch (err) {
       console.error('Error fetching profile data:', err);
@@ -441,7 +459,7 @@ const Profile: React.FC = () => {
             <div className="bg-zinc-800 rounded-lg border border-zinc-700 p-4">
               <h2 className="text-lg font-semibold text-zinc-200 mb-4">Match History</h2>
               <div className="space-y-3">
-                {customizationData?.hide_history !== 0 ? (
+                {customizationData?.hide_history !== 0 && !isOwnProfile ? (
                   <div className="text-center py-8 text-zinc-500">
                     <Icon icon="mdi:lock" className="w-12 h-12 mx-auto mb-2 opacity-50" />
                     <p className="text-sm">{t('profile.match_history_private')}</p>
