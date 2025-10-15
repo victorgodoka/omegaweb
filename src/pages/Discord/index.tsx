@@ -88,7 +88,8 @@ const Discord = () => {
         }
 
         const playerData = playerResponse.data;
-        const profile = playerData?.Discord?.Username?.Valid ? playerData : null;
+        // Check if we have valid player data with the new response format
+        const profile = playerData?.success && playerData?.id ? playerData : null;
 
         dispatch({
           type: 'SET_USER',
@@ -96,7 +97,7 @@ const Discord = () => {
             id: discordData.id,
             username: discordData.username,
             displayname: discordData.global_name || discordData.username,
-            avatar: profile?.Discord?.Avatar?.String || discordData.avatar,
+            avatar: profile?.avatar || discordData.avatar,
             profile,
           },
         });

@@ -5,6 +5,7 @@ export const API_ENDPOINTS = {
   
   // External APIs
   DUELISTS_UNITE: 'https://duelistsunite.org',
+  DUELISTS_UNITE_V3: 'https://duelistsunite.org/omega-web/v3',
   DISCORD: 'https://discord.com/api',
   FORUM: 'https://forum.duelistsunite.org',
   YGOPRODECK: 'https://db.ygoprodeck.com/api/v7',
@@ -149,9 +150,16 @@ export const api = {
     duelistsUnite: {
       getPlayer: async (discordId: string) => {
         try {
-          const response = await fetch(`${API_ENDPOINTS.DUELISTS_UNITE}/api/player/${discordId}`);
+          const response = await fetch(`${API_ENDPOINTS.DUELISTS_UNITE_V3}/profile?id=${discordId}`);
           if (!response.ok) throw new Error('Failed to fetch player data');
-          return { data: await response.json(), ok: true };
+          const result = await response.json();
+          
+          // Handle the new nested response format
+          if (result.success && result.data) {
+            return { data: result.data, ok: true };
+          } else {
+            throw new Error('Invalid response format from server');
+          }
         } catch (error) {
           console.error('Duelists Unite API Error:', error);
           return { ok: false, message: error instanceof Error ? error.message : 'Unknown error' };
