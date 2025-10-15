@@ -79,15 +79,13 @@ const NavbarWrapper: React.FC = () => {
               </Link>
             </DropdownItem>
             <DropdownDivider />
-            <DropdownItem>
-              <a
-                href="#"
-                onClick={logout}
+            <DropdownItem onClick={logout}>
+              <p
                 className="flex items-center space-x-2"
               >
                 <Icon icon="material-symbols:logout" />
                 <span className="text-white">{t("profile.logout")}</span>
-              </a>
+              </p>
             </DropdownItem>
           </Dropdown>
           : <a href={VITE_DISCORD_URL}>
