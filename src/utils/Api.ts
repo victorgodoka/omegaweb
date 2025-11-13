@@ -184,6 +184,87 @@ export const api = {
         return { ok: false, message: error instanceof Error ? error.message : 'Unknown error' };
       }
     },
+
+    // Statistics v3 endpoints
+    getStatsSummary: async (region?: number) => {
+      try {
+        const endpoint = region ? `stats/summary?region=${region}` : 'stats/summary';
+        return await fetchApi<any>(endpoint, { method: 'GET' });
+      } catch (error) {
+        console.error('Stats Summary Error:', error);
+        return { ok: false, message: error instanceof Error ? error.message : 'Unknown error' };
+      }
+    },
+
+    getStatsDecks: async (params?: { region?: number; limit?: number; minGames?: number }) => {
+      try {
+        const queryParams = new URLSearchParams();
+        if (params?.region) queryParams.append('region', params.region.toString());
+        if (params?.limit) queryParams.append('limit', params.limit.toString());
+        if (params?.minGames) queryParams.append('minGames', params.minGames.toString());
+        
+        const endpoint = `stats/decks${queryParams.toString() ? `?${queryParams.toString()}` : ''}`;
+        return await fetchApi<any>(endpoint, { method: 'GET' });
+      } catch (error) {
+        console.error('Stats Decks Error:', error);
+        return { ok: false, message: error instanceof Error ? error.message : 'Unknown error' };
+      }
+    },
+
+    getStatsCards: async (params?: { region?: number; limit?: number; minGames?: number; zone?: string }) => {
+      try {
+        const queryParams = new URLSearchParams();
+        if (params?.region) queryParams.append('region', params.region.toString());
+        if (params?.limit) queryParams.append('limit', params.limit.toString());
+        if (params?.minGames) queryParams.append('minGames', params.minGames.toString());
+        if (params?.zone) queryParams.append('zone', params.zone);
+        
+        const endpoint = `stats/cards${queryParams.toString() ? `?${queryParams.toString()}` : ''}`;
+        return await fetchApi<any>(endpoint, { method: 'GET' });
+      } catch (error) {
+        console.error('Stats Cards Error:', error);
+        return { ok: false, message: error instanceof Error ? error.message : 'Unknown error' };
+      }
+    },
+
+    getStatsDeck: async (deckName: string, region?: number) => {
+      try {
+        const endpoint = region 
+          ? `stats/deck/${encodeURIComponent(deckName)}?region=${region}`
+          : `stats/deck/${encodeURIComponent(deckName)}`;
+        return await fetchApi<any>(endpoint, { method: 'GET' });
+      } catch (error) {
+        console.error('Stats Deck Error:', error);
+        return { ok: false, message: error instanceof Error ? error.message : 'Unknown error' };
+      }
+    },
+
+    updateStats: async () => {
+      try {
+        return await fetchApi<any>('stats/update', { method: 'POST' });
+      } catch (error) {
+        console.error('Update Stats Error:', error);
+        return { ok: false, message: error instanceof Error ? error.message : 'Unknown error' };
+      }
+    },
+
+    getLastLogins: async () => {
+      try {
+        return await fetchApi<any>('lastlogins', { method: 'GET' });
+      } catch (error) {
+        console.error('Last Logins Error:', error);
+        return { ok: false, message: error instanceof Error ? error.message : 'Unknown error' };
+      }
+    },
+
+    getRankDistribution: async () => {
+      try {
+        return await fetchApi<any>('rank-distribution', { method: 'GET' });
+      } catch (error) {
+        console.error('Rank Distribution Error:', error);
+        return { ok: false, message: error instanceof Error ? error.message : 'Unknown error' };
+      }
+    },
   },
 
   // External API helpers

@@ -1,383 +1,757 @@
 import { useState, useEffect, lazy, Suspense } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Icon } from '@iconify/react';
-import { tcgHref } from '@/utils/Functions';
 import { api } from '@/utils/Api';
+import { tcgHref } from '@/utils/Functions';
+import UniqueLoginsStats from '@/components/UniqueLoginsStats';
+import type { 
+  StatsSummaryResponse, 
+  StatsDecksResponse, 
+  StatsCardsResponse,
+  DeckStat,
+  CardStat,
+  LoginData
+} from './types';
 
-// Lazy load heavy components
-const UniqueLoginsStats = lazy(() => import("@/components/UniqueLoginsStats"));
+// Lazy load components
 const DiscordBanner = lazy(() => import("@/components/DiscordBanner"));
 
-interface CardStat {
-  n: string;  // card name
-  r: number;  // rating
-  w: number;  // wins
-  l: number;  // losses
-  id: number; // card id
-}
+// Skeleton Components
+const SummarySkeleton = () => (
+  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+    {[1, 2, 3].map((i) => (
+      <div key={i} className="bg-zinc-800/50 border border-zinc-700 rounded-lg p-6">
+        <div className="flex items-center justify-between mb-2">
+          <div className="w-8 h-8 bg-zinc-700 rounded animate-pulse"></div>
+          <div className="w-20 h-8 bg-zinc-700 rounded animate-pulse"></div>
+        </div>
+        <div className="w-32 h-5 bg-zinc-700 rounded animate-pulse mb-2"></div>
+        <div className="w-24 h-4 bg-zinc-700 rounded animate-pulse"></div>
+      </div>
+    ))}
+  </div>
+);
 
-interface DeckStat {
-  n: string;  // deck name
-  r: number;  // rating
-  w: number;  // wins
-  l: number;  // losses
-  c: number;  // card id that represents the deck
-}
+const DecksSkeleton = () => (
+  <div className="space-y-3">
+    {[1, 2, 3, 4, 5].map((i) => (
+      <div key={i} className="bg-zinc-800/70 border border-zinc-700 rounded-lg p-5">
+        <div className="flex items-center gap-4">
+          <div className="w-12 h-12 bg-zinc-700 rounded-lg animate-pulse"></div>
+          <div className="flex-1">
+            <div className="w-48 h-5 bg-zinc-700 rounded animate-pulse mb-2"></div>
+            <div className="flex gap-2 mb-2">
+              <div className="w-20 h-6 bg-zinc-700 rounded animate-pulse"></div>
+              <div className="w-20 h-6 bg-zinc-700 rounded animate-pulse"></div>
+            </div>
+            <div className="flex gap-4">
+              <div className="w-16 h-4 bg-zinc-700 rounded animate-pulse"></div>
+              <div className="w-16 h-4 bg-zinc-700 rounded animate-pulse"></div>
+              <div className="w-16 h-4 bg-zinc-700 rounded animate-pulse"></div>
+            </div>
+          </div>
+          <div className="w-24 h-12 bg-zinc-700 rounded animate-pulse"></div>
+        </div>
+      </div>
+    ))}
+  </div>
+);
 
-const Statistics = () => {
+const CardsSkeleton = () => (
+  <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+    {[1, 2, 3, 4, 5, 6].map((i) => (
+      <div key={i} className="bg-zinc-800/70 border border-zinc-700 rounded-lg p-4">
+        <div className="flex items-center gap-4">
+          <div className="w-16 h-24 bg-zinc-700 rounded animate-pulse"></div>
+          <div className="flex-1">
+            <div className="w-32 h-4 bg-zinc-700 rounded animate-pulse mb-2"></div>
+            <div className="grid grid-cols-3 gap-2 mb-2">
+              <div className="h-10 bg-zinc-700 rounded animate-pulse"></div>
+              <div className="h-10 bg-zinc-700 rounded animate-pulse"></div>
+              <div className="h-10 bg-zinc-700 rounded animate-pulse"></div>
+            </div>
+            <div className="flex gap-1 mb-2">
+              <div className="flex-1 h-8 bg-zinc-700 rounded animate-pulse"></div>
+              <div className="flex-1 h-8 bg-zinc-700 rounded animate-pulse"></div>
+              <div className="flex-1 h-8 bg-zinc-700 rounded animate-pulse"></div>
+            </div>
+            <div className="flex justify-between">
+              <div className="w-20 h-4 bg-zinc-700 rounded animate-pulse"></div>
+              <div className="w-16 h-4 bg-zinc-700 rounded animate-pulse"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    ))}
+  </div>
+);
+
+const Statistics2 = () => {
   const { t } = useTranslation();
-  const [cardStats, setCardStats] = useState<CardStat[]>([]);
-  const [deckStats, setDeckStats] = useState<DeckStat[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  
+  // State
+  const [region, setRegion] = useState<number>(33); // 33 = TCG, 17 = Genesys
+  const [activeTab, setActiveTab] = useState<'decks' | 'cards-main' | 'cards-side'>('decks');
+  const [minGames, setMinGames] = useState(10);
+  const [limit, setLimit] = useState(50);
+  
+  // Cache para ambas as regiões e zones
+  const [cache, setCache] = useState<{
+    [key: number]: {
+      summary: StatsSummaryResponse | null;
+      decks: StatsDecksResponse | null;
+      cardsMain: StatsCardsResponse | null;
+      cardsSide: StatsCardsResponse | null;
+    };
+  }>({
+    33: { summary: null, decks: null, cardsMain: null, cardsSide: null },
+    17: { summary: null, decks: null, cardsMain: null, cardsSide: null },
+  });
+  
+  const [isLoading, setIsLoading] = useState<{ [key: number]: boolean }>({
+    33: true,
+    17: true,
+  });
 
+  // Logins data
+  const [loginsData, setLoginsData] = useState<LoginData[]>([]);
+  const [loginsLoading, setLoginsLoading] = useState(true);
+
+  // Fetch logins data
   useEffect(() => {
-    const fetchStats = async () => {
+    const fetchLogins = async () => {
       try {
-        setIsLoading(true);
+        setLoginsLoading(true);
+        const response = await api.main.getLastLogins();
         
-        // Fetch card stats
-        const cardResponse = await api.external.duelistsUnite.getDatabase('card_stats', 'tcg_ranked');
-        if (!cardResponse.ok) {
-          throw new Error('Failed to fetch card statistics');
+        // Tentar diferentes estruturas de resposta
+        let logins = null;
+        if (response.data?.data?.logins) {
+          logins = response.data.data.logins;
+        } else if (response.data?.logins) {
+          logins = response.data.logins;
         }
-        if (!cardResponse.data?.Success) {
-          throw new Error('Card API returned unsuccessful response');
-        }
-        const parsedCardStats: CardStat[] = JSON.parse(cardResponse.data.Value);
-        setCardStats(parsedCardStats);
         
-        // Fetch deck stats
-        const deckResponse = await api.external.duelistsUnite.getDatabase('deck_stats', 'tcg_ranked');
-        if (!deckResponse.ok) {
-          throw new Error('Failed to fetch deck statistics');
+        if (logins && Array.isArray(logins)) {
+          setLoginsData(logins);
         }
-        if (!deckResponse.data?.Success) {
-          throw new Error('Deck API returned unsuccessful response');
-        }
-        const parsedDeckStats: DeckStat[] = JSON.parse(deckResponse.data.Value);
-        setDeckStats(parsedDeckStats);
-        
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'Unknown error occurred');
+        console.error('Error fetching logins:', err);
       } finally {
-        setIsLoading(false);
+        setLoginsLoading(false);
       }
     };
-
-    fetchStats();
+    fetchLogins();
   }, []);
 
-  const getTier = (index: number): { name: string; color: string; gradient: string } => {
-    if (index < 3) return { name: 'SS', color: 'text-yellow-400', gradient: 'from-yellow-400 to-yellow-600' };
-    if (index < 8) return { name: 'S', color: 'text-red-400', gradient: 'from-red-400 to-red-600' };
-    if (index < 18) return { name: 'A', color: 'text-blue-400', gradient: 'from-blue-400 to-blue-600' };
-    return { name: 'B', color: 'text-green-400', gradient: 'from-green-400 to-green-600' };
+  // Fetch data para uma região específica
+  const fetchStatsForRegion = async (targetRegion: number, params: { limit: number; minGames: number }) => {
+    try {
+      setIsLoading(prev => ({ ...prev, [targetRegion]: true }));
+
+      // Fetch summary
+      const summaryResponse = await api.main.getStatsSummary(targetRegion);
+      if (!summaryResponse.ok || !summaryResponse.data) {
+        throw new Error(`Failed to fetch summary for region ${targetRegion}`);
+      }
+
+      // Fetch decks
+      const decksResponse = await api.main.getStatsDecks({ region: targetRegion, ...params });
+      if (!decksResponse.ok || !decksResponse.data) {
+        throw new Error(`Failed to fetch decks for region ${targetRegion}`);
+      }
+
+      // Fetch cards Main
+      const cardsMainResponse = await api.main.getStatsCards({ region: targetRegion, ...params, zone: 'main' });
+      if (!cardsMainResponse.ok || !cardsMainResponse.data) {
+        throw new Error(`Failed to fetch cards main for region ${targetRegion}`);
+      }
+
+      // Fetch cards Side
+      const cardsSideResponse = await api.main.getStatsCards({ region: targetRegion, ...params, zone: 'side' });
+      if (!cardsSideResponse.ok || !cardsSideResponse.data) {
+        throw new Error(`Failed to fetch cards side for region ${targetRegion}`);
+      }
+
+      // Atualizar cache
+      setCache(prev => ({
+        ...prev,
+        [targetRegion]: {
+          summary: summaryResponse.data,
+          decks: decksResponse.data,
+          cardsMain: cardsMainResponse.data,
+          cardsSide: cardsSideResponse.data,
+        },
+      }));
+
+      setIsLoading(prev => ({ ...prev, [targetRegion]: false }));
+    } catch (err) {
+      console.error(`Error fetching stats for region ${targetRegion}:`, err);
+      setIsLoading(prev => ({ ...prev, [targetRegion]: false }));
+    }
   };
 
-  const calculateWinRate = (wins: number, losses: number): number => {
-    const total = wins + losses;
-    return total > 0 ? (wins / total) * 100 : 0;
+  // Pré-carregar ambas as regiões na montagem
+  useEffect(() => {
+    const params = { limit, minGames };
+    fetchStatsForRegion(33, params); // TCG
+    fetchStatsForRegion(17, params); // Genesys
+  }, []);
+
+  // Recarregar quando filtros mudarem
+  useEffect(() => {
+    const params = { limit, minGames };
+    fetchStatsForRegion(33, params);
+    fetchStatsForRegion(17, params);
+  }, [minGames, limit]);
+
+  // Dados da região atual
+  const summary = cache[region]?.summary;
+  const decks = cache[region]?.decks;
+  const cardsMain = cache[region]?.cardsMain;
+  const cardsSide = cache[region]?.cardsSide;
+  const currentLoading = isLoading[region];
+
+  // Format date
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleString('pt-BR', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
   };
 
-  const calculateUsage = (wins: number, losses: number): number => {
-    return wins + losses;
-  };
-
-  // Sort by usage (total games) for most used cards
-  const mostUsedCards = [...cardStats]
-    .sort((a, b) => calculateUsage(b.w, b.l) - calculateUsage(a.w, a.l))
-    .slice(0, 25);
-
-  // Sort by rating first, then by win rate for top rated cards
-  const topRatedCards = [...cardStats]
-    .sort((a, b) => b.r - a.r)
-    .slice(0, 25)
-    .sort((a, b) => calculateWinRate(b.w, b.l) - calculateWinRate(a.w, a.l));
-
-  // Sort by rating first, then by win rate for top rated decks
-  const topRatedDecks = [...deckStats]
-    .sort((a, b) => b.r - a.r)
-    .slice(0, 15)
-    .sort((a, b) => calculateWinRate(b.w, b.l) - calculateWinRate(a.w, a.l));
-
-  const CardTierItem = ({ card, index }: { card: CardStat; index: number }) => {
-    const tier = getTier(index);
-    const winRate = calculateWinRate(card.w, card.l);
-    const usage = calculateUsage(card.w, card.l);
-
-    return (
-      <div className="bg-zinc-800 border border-zinc-700 rounded-lg p-4 hover:border-zinc-600 transition-all">
-        <div className="flex items-center gap-4">
-          <div className="flex-shrink-0">
-            <img
-              src={`https://images.ygoprodeck.com/images/cards_cropped/${card.id}.jpg`}
-              alt={card.n}
-              className="w-16 h-22 object-cover rounded border border-zinc-600"
-              onError={(e) => {
-                const target = e.target as HTMLImageElement;
-                target.src = '/card-placeholder.png';
-              }}
-            />
-          </div>
-          
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2 mb-1">
-              <span className={`px-2 py-1 rounded text-xs font-bold bg-gradient-to-r ${tier.gradient} text-white`}>
-                {tier.name}
-              </span>
-              <span className="text-zinc-400 text-sm">#{index + 1}</span>
-            </div>
-            
-            <a 
-              href={tcgHref(card.n)} 
-              target="_blank" 
-              rel="noopener noreferrer"
-              className="text-white font-medium text-sm truncate mb-2 hover:text-orange-400 transition-colors block"
-            >
-              {card.n}
-            </a>
-            
-            <div className="grid grid-cols-3 gap-2 text-xs">
-              <div className="text-center">
-                <div className="text-zinc-400">{t('statistics.usage')}</div>
-                <div className="text-white font-semibold">{usage}</div>
-              </div>
-              <div className="text-center">
-                <div className="text-zinc-400">{t('statistics.win_rate')}</div>
-                <div className={`font-semibold ${
-                  winRate >= 60 ? 'text-green-400' : 
-                  winRate >= 50 ? 'text-yellow-400' : 'text-red-400'
-                }`}>
-                  {winRate.toFixed(1)}%
-                </div>
-              </div>
-              <div className="text-center">
-                <div className="text-zinc-400">{t('statistics.rating')}</div>
-                <div className="text-blue-400 font-semibold">{card.r}</div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  };
-
-  const WinRateChart = ({ cards }: { cards: CardStat[] }) => {
-    return (
-      <div className="space-y-3">
-        {cards.map((card, index) => {
-          const winRate = calculateWinRate(card.w, card.l);
-          const usage = calculateUsage(card.w, card.l);
-          
-          return (
-            <div key={card.id} className="bg-zinc-800/50 border border-zinc-700 rounded-lg p-4 hover:bg-zinc-800/80 transition-all duration-200">
-              <div className="flex items-center gap-4">
-                {/* Rank */}
-                <div className="w-8 h-8 bg-zinc-700 rounded-lg flex items-center justify-center text-zinc-300 text-sm font-semibold">
-                  {index + 1}
-                </div>
-                
-                {/* Card Image */}
-                <img
-                  src={`https://images.ygoprodeck.com/images/cards_cropped/${card.id}.jpg`}
-                  alt={card.n}
-                  className="w-10 h-14 object-cover rounded border border-zinc-600"
-                  onError={(e) => {
-                    const target = e.target as HTMLImageElement;
-                    target.src = '/card-placeholder.png';
-                  }}
-                />
-                
-                {/* Card Info */}
-                <div className="flex-1 min-w-0">
-                  <a 
-                    href={tcgHref(card.n)} 
-                    target="_blank" 
-                    rel="noopener noreferrer"
-                    className="text-white font-medium hover:text-orange-400 transition-colors block mb-1"
-                  >
-                    {card.n}
-                  </a>
-                  <div className="text-zinc-400 text-sm">
-                    {card.w}W • {card.l}L • {usage} {t('statistics.games')}
-                  </div>
-                </div>
-                
-                {/* Win Rate */}
-                <div className="text-right">
-                  <div className={`text-lg font-semibold mb-1 ${
-                    winRate >= 65 ? 'text-green-400' : 
-                    winRate >= 55 ? 'text-blue-400' : 
-                    winRate >= 45 ? 'text-yellow-400' : 'text-red-400'
-                  }`}>
-                    {winRate.toFixed(1)}%
-                  </div>
-                  <div className="w-24 bg-zinc-700 rounded-full h-2">
-                    <div
-                      className={`h-2 rounded-full transition-all duration-500 ${
-                        winRate >= 65 ? 'bg-green-500' : 
-                        winRate >= 55 ? 'bg-blue-500' : 
-                        winRate >= 45 ? 'bg-yellow-500' : 'bg-red-500'
-                      }`}
-                      style={{ width: `${winRate}%` }}
-                    ></div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          );
-        })}
-      </div>
-    );
-  };
-
-  const DeckChart = ({ decks }: { decks: DeckStat[] }) => {
-    return (
-      <div className="space-y-3">
-        {decks.map((deck, index) => {
-          const winRate = calculateWinRate(deck.w, deck.l);
-          const usage = calculateUsage(deck.w, deck.l);
-          
-          return (
-            <div key={`${deck.c}-${deck.n}`} className="bg-zinc-800/70 border border-zinc-600 rounded-lg p-4 hover:bg-zinc-700/70 transition-colors duration-200">
-              <div className="flex items-center gap-4">
-                {/* Rank */}
-                <div className="w-8 h-8 bg-zinc-700 rounded flex items-center justify-center text-zinc-300 text-sm font-medium">
-                  {index + 1}
-                </div>
-                
-                {/* Deck Representative Card */}
-                <img
-                  src={`https://images.ygoprodeck.com/images/cards_cropped/${deck.c}.jpg`}
-                  alt={deck.n}
-                  className="w-12 h-16 object-cover rounded border border-zinc-600"
-                  onError={(e) => {
-                    const target = e.target as HTMLImageElement;
-                    target.src = '/card-placeholder.png';
-                  }}
-                />
-                
-                {/* Deck Info */}
-                <div className="flex-1 min-w-0">
-                  <h3 className="text-white font-semibold text-base mb-1">
-                    {deck.n}
-                  </h3>
-                  <div className="text-zinc-400 text-sm">
-                    {deck.w}W • {deck.l}L • {usage} {t('statistics.games')}
-                  </div>
-                </div>
-                
-                {/* Win Rate */}
-                <div className="text-right flex items-center gap-3">
-                  <div className={`text-xl font-semibold ${
-                    winRate >= 65 ? 'text-green-400' : 
-                    winRate >= 55 ? 'text-blue-400' : 
-                    winRate >= 45 ? 'text-yellow-400' : 'text-red-400'
-                  }`}>
-                    {winRate.toFixed(1)}%
-                  </div>
-                  <div className="w-24 bg-zinc-700 rounded-full h-3">
-                    <div
-                      className={`h-3 rounded-full transition-all duration-300 ${
-                        winRate >= 65 ? 'bg-green-500' : 
-                        winRate >= 55 ? 'bg-blue-500' : 
-                        winRate >= 45 ? 'bg-yellow-500' : 'bg-red-500'
-                      }`}
-                      style={{ width: `${winRate}%` }}
-                    ></div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          );
-        })}
-      </div>
-    );
-  };
-
-  if (isLoading) {
-    return (
-      <div className="w-full flex flex-col items-center px-4 mt-12">
-        <Suspense fallback={<div className="h-32 bg-zinc-800 rounded-lg animate-pulse"></div>}>
-          <DiscordBanner />
-        </Suspense>
-        <div className="flex items-center justify-center py-12">
-          <Icon icon="mdi:loading" className="animate-spin w-8 h-8 text-orange-500" />
-          <span className="ml-2 text-zinc-400">{t('statistics.loading')}</span>
-        </div>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="w-full flex flex-col items-center px-4 mt-12">
-        <Suspense fallback={<div className="h-32 bg-zinc-800 rounded-lg animate-pulse"></div>}>
-          <DiscordBanner />
-        </Suspense>
-        <div className="text-center py-12">
-          <Icon icon="mdi:alert-circle" className="w-12 h-12 text-red-500 mx-auto mb-2" />
-          <p className="text-red-400">{error || t('statistics.error')}</p>
-        </div>
-      </div>
-    );
-  }
 
   return (
-    <div className="w-full flex flex-col items-center px-4 mt-12 space-y-8">
+    <div className="w-full flex flex-col items-center px-4 mt-12 space-y-8 pb-12">
       <Suspense fallback={<div className="h-32 bg-zinc-800 rounded-lg animate-pulse"></div>}>
         <DiscordBanner />
       </Suspense>
-      <Suspense fallback={<div className="h-64 bg-zinc-800 rounded-lg animate-pulse"></div>}>
-        <UniqueLoginsStats />
-      </Suspense>
-      
-      {/* Card Statistics */}
-      <div className="w-full max-w-7xl space-y-8">
-        {/* Most Used Cards */}
-        <div>
-          <div className="flex items-center gap-3 mb-6">
-            <Icon icon="mdi:trending-up" className="w-6 h-6 text-orange-500" />
-            <h2 className="text-2xl font-bold text-white">{t('statistics.most_used_cards')}</h2>
-            <div className="text-zinc-400 text-sm">{t('statistics.most_used_cards_desc')}</div>
-          </div>
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-            {mostUsedCards.map((card, index) => (
-              <CardTierItem key={card.id} card={card} index={index} />
-            ))}
+
+      {/* Header */}
+      <div className="w-full max-w-7xl">
+        <div className="flex items-center justify-between mb-6">
+          <div>
+            <h1 className="text-3xl font-bold text-white mb-2">
+              <Icon icon="mdi:chart-box" className="inline w-8 h-8 mr-2 text-orange-500" />
+              {t('statistics2.title')}
+            </h1>
+            <p className="text-zinc-400">{t('statistics2.subtitle')}</p>
           </div>
         </div>
 
-        {/* Top Rated Cards */}
-        <div>
-          <div className="flex items-center gap-3 mb-6">
-            <Icon icon="mdi:cards" className="w-6 h-6 text-orange-500" />
-            <h2 className="text-2xl font-bold text-white">{t('statistics.top_rated_cards')}</h2>
-            <div className="text-zinc-400 text-sm">{t('statistics.top_rated_cards_desc')}</div>
+        {/* Logins Analytics */}
+        {!loginsLoading && loginsData.length > 0 && (
+          <div className="mb-8 w-full">
+            <UniqueLoginsStats 
+              logins={loginsData.map(login => ({
+                LogDate: login.LogDate,
+                LogCount: login.LogCount
+              }))} 
+              total={loginsData.reduce((sum, login) => sum + login.LogCount, 0)}
+            />
           </div>
-          
-          <div className="bg-zinc-800/50 border border-zinc-700 rounded-lg p-4">
-            <WinRateChart cards={topRatedCards} />
+        )}
+
+        {/* Region Selector */}
+        <div className="flex gap-3 mb-6">
+          <button
+            onClick={() => setRegion(33)}
+            className={`px-6 py-3 rounded-lg font-semibold transition-all ${
+              region === 33
+                ? 'bg-orange-500 text-white shadow-lg shadow-orange-500/50'
+                : 'bg-zinc-800 text-zinc-400 hover:bg-zinc-700'
+            }`}
+          >
+            <Icon icon="mdi:earth" className="inline w-5 h-5 mr-2" />
+            {t('statistics2.tcg')}
+          </button>
+          <button
+            onClick={() => setRegion(17)}
+            className={`px-6 py-3 rounded-lg font-semibold transition-all ${
+              region === 17
+                ? 'bg-purple-500 text-white shadow-lg shadow-purple-500/50'
+                : 'bg-zinc-800 text-zinc-400 hover:bg-zinc-700'
+            }`}
+          >
+            <Icon icon="mdi:star" className="inline w-5 h-5 mr-2" />
+            {t('statistics2.genesys')}
+          </button>
+        </div>
+
+        {/* Summary Cards */}
+        {currentLoading ? (
+          <SummarySkeleton />
+        ) : summary && summary.summary ? (
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+            <div className="bg-gradient-to-br from-blue-500/10 to-blue-600/5 border border-blue-500/30 rounded-lg p-6">
+              <div className="flex items-center justify-between mb-2">
+                <Icon icon="mdi:cards-variant" className="w-8 h-8 text-blue-400" />
+                <span className="text-3xl font-bold text-blue-400">
+                  {summary.summary.total_unique_decks || 0}
+                </span>
+              </div>
+              <p className="text-zinc-300 font-medium">{t('statistics2.total_unique_decks')}</p>
+              <p className="text-zinc-500 text-sm">{summary.summary.total_deck_variants || 0} {t('statistics2.total_deck_variants').toLowerCase()}</p>
+            </div>
+
+            <div className="bg-gradient-to-br from-green-500/10 to-green-600/5 border border-green-500/30 rounded-lg p-6">
+              <div className="flex items-center justify-between mb-2">
+                <Icon icon="mdi:sword-cross" className="w-8 h-8 text-green-400" />
+                <span className="text-3xl font-bold text-green-400">
+                  {(summary.summary.total_games || 0).toLocaleString()}
+                </span>
+              </div>
+              <p className="text-zinc-300 font-medium">{t('statistics2.total_games')}</p>
+              <p className="text-zinc-500 text-sm">{t('statistics2.games')}</p>
+            </div>
+
+            <div className="bg-gradient-to-br from-purple-500/10 to-purple-600/5 border border-purple-500/30 rounded-lg p-6">
+              <div className="flex items-center justify-between mb-2">
+                <Icon icon="mdi:clock-outline" className="w-8 h-8 text-purple-400" />
+                <span className="text-sm font-medium text-purple-400">
+                  {summary.lastProcessed?.[0]?.last_processed_at 
+                    ? formatDate(summary.lastProcessed[0].last_processed_at)
+                    : 'N/A'}
+                </span>
+              </div>
+              <p className="text-zinc-300 font-medium">{t('statistics2.last_processed')}</p>
+              <p className="text-zinc-500 text-sm">
+                {summary.lastProcessed?.[0]?.last_duel_id 
+                  ? `${t('statistics2.last_duel_id')} #${summary.lastProcessed[0].last_duel_id.toLocaleString()}`
+                  : t('statistics2.last_duel_id')}
+              </p>
+            </div>
+          </div>
+        ) : null}
+
+        {/* Filters */}
+        <div className="bg-zinc-800/50 border border-zinc-700 rounded-lg p-4 mb-6">
+          <div className="flex flex-wrap items-center gap-4">
+            <div className="flex items-center gap-2">
+              <label className="text-zinc-400 text-sm">{t('statistics2.min_games')}:</label>
+              <select
+                value={minGames}
+                onChange={(e) => setMinGames(Number(e.target.value))}
+                className="bg-zinc-700 text-white px-3 py-2 rounded border border-zinc-600 focus:border-orange-500 focus:outline-none"
+              >
+                <option value={5}>5+</option>
+                <option value={10}>10+</option>
+                <option value={20}>20+</option>
+                <option value={50}>50+</option>
+                <option value={100}>100+</option>
+              </select>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <label className="text-zinc-400 text-sm">{t('statistics2.limit')}:</label>
+              <select
+                value={limit}
+                onChange={(e) => setLimit(Number(e.target.value))}
+                className="bg-zinc-700 text-white px-3 py-2 rounded border border-zinc-600 focus:border-orange-500 focus:outline-none"
+              >
+                <option value={25}>25</option>
+                <option value={50}>50</option>
+                <option value={100}>100</option>
+                <option value={200}>200</option>
+              </select>
+            </div>
           </div>
         </div>
 
-        {/* Top Rated Decks */}
-        <div>
-          <div className="flex items-center gap-3 mb-6">
-            <Icon icon="mdi:cards-variant" className="w-6 h-6 text-purple-500" />
-            <h2 className="text-2xl font-bold text-white">{t('statistics.top_rated_decks')}</h2>
-            <div className="text-zinc-400 text-sm">{t('statistics.top_rated_decks_desc')}</div>
-          </div>
-          
-          <div className="bg-zinc-800/50 border border-zinc-700 rounded-lg p-4">
-            <DeckChart decks={topRatedDecks} />
-          </div>
+        {/* Tabs */}
+        <div className="flex gap-2 mb-6">
+          <button
+            onClick={() => setActiveTab('decks')}
+            className={`flex-1 px-6 py-3 rounded-lg font-semibold transition-all ${
+              activeTab === 'decks'
+                ? 'bg-gradient-to-r from-orange-500 to-orange-600 text-white shadow-lg'
+                : 'bg-zinc-800 text-zinc-400 hover:bg-zinc-700'
+            }`}
+          >
+            <Icon icon="mdi:cards-variant" className="inline w-5 h-5 mr-2" />
+            {t('statistics2.top_decks')} ({decks?.count || 0})
+          </button>
+          <button
+            onClick={() => setActiveTab('cards-main')}
+            className={`flex-1 px-6 py-3 rounded-lg font-semibold transition-all ${
+              activeTab === 'cards-main'
+                ? 'bg-gradient-to-r from-orange-500 to-orange-600 text-white shadow-lg'
+                : 'bg-zinc-800 text-zinc-400 hover:bg-zinc-700'
+            }`}
+          >
+            <Icon icon="mdi:cards" className="inline w-5 h-5 mr-2" />
+            {t('statistics2.top_cards_main')} ({cardsMain?.count || 0})
+          </button>
+          <button
+            onClick={() => setActiveTab('cards-side')}
+            className={`flex-1 px-6 py-3 rounded-lg font-semibold transition-all ${
+              activeTab === 'cards-side'
+                ? 'bg-gradient-to-r from-orange-500 to-orange-600 text-white shadow-lg'
+                : 'bg-zinc-800 text-zinc-400 hover:bg-zinc-700'
+            }`}
+          >
+            <Icon icon="mdi:card-multiple" className="inline w-5 h-5 mr-2" />
+            {t('statistics2.top_cards_side')} ({cardsSide?.count || 0})
+          </button>
         </div>
+
+        {/* Content */}
+        {activeTab === 'decks' && (
+          currentLoading ? <DecksSkeleton /> : decks && <DecksList decks={decks.decks} />
+        )}
+
+        {activeTab === 'cards-main' && (
+          currentLoading ? <CardsSkeleton /> : cardsMain && <CardsList cards={cardsMain.cards} />
+        )}
+
+        {activeTab === 'cards-side' && (
+          currentLoading ? <CardsSkeleton /> : cardsSide && <CardsList cards={cardsSide.cards} />
+        )}
       </div>
     </div>
   );
 };
 
-export default Statistics;
+// Decks List Component
+const DecksList = ({ decks }: { decks: DeckStat[] }) => {
+  const { t } = useTranslation();
+  const top3 = decks.slice(0, 3);
+  const rest = decks.slice(3);
+
+  return (
+    <div className="space-y-6">
+      {/* Top 3 - Destaque especial */}
+      {top3.length > 0 && (
+        <div>
+          <div className="flex items-center gap-2 mb-4">
+            <Icon icon="mdi:trophy" className="w-6 h-6 text-yellow-400" />
+            <h3 className="text-xl font-bold text-white">{t('statistics2.top_3_decks')}</h3>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {top3.map((deck, index) => (
+              <div
+                key={`${deck.deck_name}-${index}`}
+                className={`relative bg-gradient-to-br rounded-xl p-6 border-2 hover:scale-105 transition-all duration-300 shadow-xl ${
+                  index === 0 
+                    ? 'from-yellow-500/20 to-yellow-600/10 border-yellow-400/50 shadow-yellow-500/20' 
+                    : index === 1
+                    ? 'from-gray-400/20 to-gray-500/10 border-gray-400/50 shadow-gray-500/20'
+                    : 'from-orange-500/20 to-orange-600/10 border-orange-400/50 shadow-orange-500/20'
+                }`}
+              >
+                {/* Badge de posição */}
+                <div className="absolute -top-3 -right-3">
+                  <div className={`w-14 h-14 rounded-full flex items-center justify-center font-black text-2xl shadow-lg ${
+                    index === 0 ? 'bg-gradient-to-br from-yellow-400 to-yellow-600 text-white' :
+                    index === 1 ? 'bg-gradient-to-br from-gray-300 to-gray-500 text-white' :
+                    'bg-gradient-to-br from-orange-400 to-orange-600 text-white'
+                  }`}>
+                    {index + 1}
+                  </div>
+                </div>
+
+                {/* Nome do deck */}
+                <h4 className="text-white font-bold text-xl mb-3 pr-8">
+                  {deck.deck_name}
+                </h4>
+
+                {/* Archetypes */}
+                <div className="flex flex-wrap gap-2 mb-3">
+                  {deck.top_archetypes.map((archetype, i) => (
+                    <a
+                      key={i}
+                      href={tcgHref(archetype.name)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-1.5 px-2 py-1 bg-orange-500/30 text-orange-300 text-xs rounded-lg border border-orange-400/50 font-semibold hover:bg-orange-500/40 transition-colors"
+                    >
+                      {archetype.ids && archetype.ids.length > 0 && (
+                        <img
+                          src={`https://images.ygoprodeck.com/images/cards_cropped/${archetype.ids[0]}.jpg`}
+                          alt={archetype.name}
+                          className="w-4 h-6 object-cover rounded border border-orange-400/50"
+                          onError={(e) => {
+                            const target = e.target as HTMLImageElement;
+                            target.style.display = 'none';
+                          }}
+                        />
+                      )}
+                      <span>{archetype.name}</span>
+                    </a>
+                  ))}
+                </div>
+
+                {/* Stats */}
+                <div className="grid grid-cols-2 gap-2 mb-3 text-sm">
+                  <div className="bg-black/20 rounded-lg p-2 text-center">
+                    <div className="text-green-400 font-bold">{deck.total_wins}W</div>
+                    <div className="text-zinc-400 text-xs">{t('wins')}</div>
+                  </div>
+                  <div className="bg-black/20 rounded-lg p-2 text-center">
+                    <div className="text-red-400 font-bold">{deck.total_losses}L</div>
+                    <div className="text-zinc-400 text-xs">{t('losses')}</div>
+                  </div>
+                  <div className="bg-black/20 rounded-lg p-2 text-center">
+                    <div className="text-blue-400 font-bold">{deck.total_games}</div>
+                    <div className="text-zinc-400 text-xs">{t('statistics2.games')}</div>
+                  </div>
+                  <div className="bg-black/20 rounded-lg p-2 text-center">
+                    <div className="text-purple-400 font-bold">{deck.unique_deck_variants}</div>
+                    <div className="text-zinc-400 text-xs">{t('statistics2.total_deck_variants')}</div>
+                  </div>
+                </div>
+
+                {/* Win Rate */}
+                <div className="text-center">
+                  <div className={`text-4xl font-black mb-2 ${
+                    Number(deck.win_rate) >= 55 ? 'text-green-400' :
+                    Number(deck.win_rate) >= 50 ? 'text-yellow-400' :
+                    Number(deck.win_rate) >= 45 ? 'text-orange-400' : 'text-red-400'
+                  }`}>
+                    {Number(deck.win_rate).toFixed(1)}%
+                  </div>
+                  <div className="w-full bg-black/30 rounded-full h-3 overflow-hidden">
+                    <div
+                      className={`h-3 rounded-full transition-all duration-500 ${
+                        Number(deck.win_rate) >= 55 ? 'bg-gradient-to-r from-green-400 to-green-600' :
+                        Number(deck.win_rate) >= 50 ? 'bg-gradient-to-r from-yellow-400 to-yellow-600' :
+                        Number(deck.win_rate) >= 45 ? 'bg-gradient-to-r from-orange-400 to-orange-600' :
+                        'bg-gradient-to-r from-red-400 to-red-600'
+                      }`}
+                      style={{ width: `${Number(deck.win_rate)}%` }}
+                    ></div>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Resto dos decks - Layout compacto */}
+      {rest.length > 0 && (
+        <div>
+          <h3 className="text-lg font-bold text-zinc-300 mb-3">{t('statistics2.other_decks')}</h3>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+            {rest.map((deck, index) => {
+              const actualIndex = index + 3;
+              return (
+                <div
+                  key={`${deck.deck_name}-${actualIndex}`}
+                  className="bg-zinc-800/70 border border-zinc-700 rounded-lg p-4 hover:border-orange-500/50 transition-all duration-200 group"
+                >
+                  <div className="flex items-center gap-4">
+                    {/* Rank */}
+                    <div className="flex-shrink-0">
+                      <div className={`w-10 h-10 rounded-lg flex items-center justify-center font-bold ${
+                        actualIndex < 10 ? 'bg-orange-500/20 text-orange-400 border border-orange-500/30' :
+                        'bg-zinc-700 text-zinc-300'
+                      }`}>
+                        {actualIndex + 1}
+                      </div>
+                    </div>
+
+                    {/* Deck Info */}
+                    <div className="flex-1 min-w-0">
+                      <h4 className="text-white font-semibold mb-1 group-hover:text-orange-400 transition-colors">
+                        {deck.deck_name}
+                      </h4>
+                      
+                      {/* Archetypes */}
+                      <div className="flex flex-wrap gap-1.5 mb-2">
+                        {deck.top_archetypes.map((archetype, i) => (
+                          <a
+                            key={i}
+                            href={tcgHref(archetype.name)}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex items-center gap-1 px-2 py-0.5 bg-orange-500/20 text-orange-400 text-xs rounded border border-orange-500/30 hover:bg-orange-500/30 transition-colors"
+                          >
+                            {archetype.ids && archetype.ids.length > 0 && (
+                              <img
+                                src={`https://images.ygoprodeck.com/images/cards_cropped/${archetype.ids[0]}.jpg`}
+                                alt={archetype.name}
+                                className="w-3 h-5 object-cover rounded border border-orange-500/50"
+                                onError={(e) => {
+                                  const target = e.target as HTMLImageElement;
+                                  target.style.display = 'none';
+                                }}
+                              />
+                            )}
+                            <span className="font-medium">{archetype.name}</span>
+                          </a>
+                        ))}
+                      </div>
+
+                      {/* Stats */}
+                      <div className="flex items-center gap-3 text-xs text-zinc-400">
+                        <span className="text-green-400">{deck.total_wins}W</span>
+                        <span className="text-red-400">{deck.total_losses}L</span>
+                        <span className="text-blue-400">{deck.total_games} {t('statistics2.games')}</span>
+                        <span className="text-purple-400">{deck.unique_deck_variants} {t('statistics2.variants')}</span>
+                      </div>
+                    </div>
+
+                    {/* Win Rate */}
+                    <div className="flex-shrink-0 text-right">
+                      <div className={`text-2xl font-bold mb-1 ${
+                        Number(deck.win_rate) >= 55 ? 'text-green-400' :
+                        Number(deck.win_rate) >= 50 ? 'text-yellow-400' :
+                        Number(deck.win_rate) >= 45 ? 'text-orange-400' : 'text-red-400'
+                      }`}>
+                        {Number(deck.win_rate).toFixed(1)}%
+                      </div>
+                      <div className="w-24 bg-zinc-700 rounded-full h-2 overflow-hidden">
+                        <div
+                          className={`h-2 rounded-full transition-all duration-500 ${
+                            Number(deck.win_rate) >= 55 ? 'bg-green-500' :
+                            Number(deck.win_rate) >= 50 ? 'bg-yellow-500' :
+                            Number(deck.win_rate) >= 45 ? 'bg-orange-500' : 'bg-red-500'
+                          }`}
+                          style={{ width: `${Number(deck.win_rate)}%` }}
+                        ></div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+// Cards List Component
+const CardsList = ({ cards }: { cards: CardStat[] }) => {
+  const { t } = useTranslation();
+  
+  return (
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+      {cards.map((card, index) => (
+        <div
+          key={`${card.card_id}-${index}`}
+          className="bg-zinc-800/70 border border-zinc-700 rounded-lg p-4 hover:border-orange-500/50 transition-all duration-200 group"
+        >
+          <div className="flex items-center gap-4">
+            {/* Rank & Image */}
+            <div className="flex-shrink-0">
+              <div className="relative">
+                <a
+                  href={tcgHref(card.card_name)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="block hover:opacity-80 transition-opacity"
+                >
+                  <img
+                    src={`https://images.ygoprodeck.com/images/cards_cropped/${card.card_id}.jpg`}
+                    alt={card.card_name}
+                    className="w-16 h-24 object-cover rounded border-2 border-zinc-600 group-hover:border-orange-500 transition-colors"
+                    onError={(e) => {
+                      const target = e.target as HTMLImageElement;
+                      target.src = '/card-placeholder.png';
+                    }}
+                  />
+                </a>
+                <div className={`absolute -top-2 -left-2 w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold ${
+                  index < 3 ? 'bg-gradient-to-br from-yellow-400 to-yellow-600 text-white' :
+                  index < 10 ? 'bg-gradient-to-br from-orange-400 to-orange-600 text-white' :
+                  'bg-zinc-700 text-zinc-300'
+                }`}>
+                  {index + 1}
+                </div>
+              </div>
+            </div>
+
+            {/* Card Info */}
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2 mb-1">
+                <a
+                  href={tcgHref(card.card_name)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="hover:opacity-80 transition-opacity"
+                >
+                  <h3 className="text-white font-semibold text-sm group-hover:text-orange-400 transition-colors truncate">
+                    {card.card_name}
+                  </h3>
+                </a>
+                <span className={`px-2 py-0.5 rounded text-xs font-medium ${
+                  card.zone === 'main' ? 'bg-blue-500/20 text-blue-400 border border-blue-500/30' :
+                  card.zone === 'extra' ? 'bg-purple-500/20 text-purple-400 border border-purple-500/30' :
+                  'bg-green-500/20 text-green-400 border border-green-500/30'
+                }`}>
+                  {card.zone.toUpperCase()}
+                </span>
+              </div>
+
+              {/* Stats Grid */}
+              <div className="grid grid-cols-3 gap-2 text-xs mb-2">
+                <div className="text-center bg-zinc-900/50 rounded p-1">
+                  <div className="text-zinc-400">{t('statistics2.decks')}</div>
+                  <div className="text-white font-semibold">{card.decks_used_in}</div>
+                </div>
+                <div className="text-center bg-zinc-900/50 rounded p-1">
+                  <div className="text-zinc-400">{t('statistics2.copies')}</div>
+                  <div className="text-white font-semibold">{card.total_copies}</div>
+                </div>
+                <div className="text-center bg-zinc-900/50 rounded p-1">
+                  <div className="text-zinc-400">{t('statistics2.average')}</div>
+                  <div className="text-white font-semibold">{Number(card.avg_copies).toFixed(1)}</div>
+                </div>
+              </div>
+
+              {/* Copy Distribution */}
+              <div className="flex gap-1 text-xs mb-2">
+                <div className="flex-1 bg-zinc-700 rounded px-2 py-1 text-center">
+                  <span className="text-zinc-400">1x:</span>
+                  <span className="text-white ml-1">{card.decks_1_copy}</span>
+                </div>
+                <div className="flex-1 bg-zinc-700 rounded px-2 py-1 text-center">
+                  <span className="text-zinc-400">2x:</span>
+                  <span className="text-white ml-1">{card.decks_2_copies}</span>
+                </div>
+                <div className="flex-1 bg-zinc-700 rounded px-2 py-1 text-center">
+                  <span className="text-zinc-400">3x:</span>
+                  <span className="text-white ml-1">{card.decks_3_copies}</span>
+                </div>
+              </div>
+
+              {/* Win Rate */}
+              <div className="flex items-center justify-between">
+                <div className="text-xs text-zinc-400">
+                  {card.total_wins}W • {card.total_losses}L
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className={`text-sm font-bold ${
+                    Number(card.win_rate) >= 55 ? 'text-green-400' :
+                    Number(card.win_rate) >= 50 ? 'text-yellow-400' :
+                    Number(card.win_rate) >= 45 ? 'text-orange-400' : 'text-red-400'
+                  }`}>
+                    {Number(card.win_rate).toFixed(1)}%
+                  </div>
+                  <div className="w-20 bg-zinc-700 rounded-full h-2">
+                    <div
+                      className={`h-2 rounded-full ${
+                        Number(card.win_rate) >= 55 ? 'bg-green-500' :
+                        Number(card.win_rate) >= 50 ? 'bg-yellow-500' :
+                        Number(card.win_rate) >= 45 ? 'bg-orange-500' : 'bg-red-500'
+                      }`}
+                      style={{ width: `${Number(card.win_rate)}%` }}
+                    ></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+};
+
+export default Statistics2;

@@ -7,9 +7,8 @@ const Home = lazy(() => import("@/pages/Home"));
 const Live = lazy(() => import("@/pages/Live"));
 const Statistics = lazy(() => import("@/pages/Statistics"));
 const History = lazy(() => import("@/pages/History"));
-const Leaderboard = lazy(() => import("@/pages/Leaderboard"));
+const Leaderboard = lazy(() => import("@/pages/Leaderboards"));
 const Profile = lazy(() => import("@/pages/Profile"));
-const Profile2 = lazy(() => import("@/pages/Profile2"));
 const ProfileEdit = lazy(() => import("@/pages/ProfileEdit"));
 const Discord = lazy(() => import("@/pages/Discord"));
 const NotFound = lazy(() => import("@/pages/NotFound"));
@@ -31,7 +30,6 @@ export const router = createHashRouter([
       { path: "/history", Component: History },
       { path: "/leaderboards", Component: Leaderboard },
       { path: "/profile/:id", Component: Profile },
-      { path: "/profile2/:id", Component: Profile2 },
       { path: "/profile/edit", Component: ProfileEdit },
       { path: "/discord", Component: Discord },
       { path: "/not-found", Component: NotFound, id: "notfound" },
