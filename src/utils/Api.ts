@@ -1,4 +1,3 @@
-import type { LeaderboardResponse } from "@/pages/Leaderboard/types";
 
 // API Configuration
 export const API_ENDPOINTS = {
@@ -148,7 +147,7 @@ export const api = {
     // Leaderboard endpoint
     getLeaderboard: async () => {
       try {
-        const response = await fetchApi<LeaderboardResponse>('leaderboard', { method: 'GET' });
+        const response = await fetchApi<any>('leaderboard', { method: 'GET' });
         return response;
       } catch (error) {
         console.error('Leaderboard API Error:', error);

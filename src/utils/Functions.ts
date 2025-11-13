@@ -92,7 +92,7 @@ export const getDuelist = (id: string, players: Player[] | null, t?: (key: strin
 }
 
 
-export const getTierInfo = (rating: number, format: 'TCG' | 'OCG'): { name: string; image: string } => {
+export const getTierInfo = (rating: number): { name: string; image: string } => {
   let tierName = 'Iron';
 
   if (rating >= 2000) tierName = 'Omega';

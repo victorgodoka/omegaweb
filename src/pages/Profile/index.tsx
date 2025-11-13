@@ -154,7 +154,7 @@ const Profile2: React.FC = () => {
 
   const currentTierInfo = useMemo(() => {
     if (!currentStats.rating) return { name: 'Unranked', image: '/tiers/unranked.png' };
-    return getTierInfo(currentStats.rating, gameMode.toUpperCase() as 'TCG' | 'OCG');
+    return getTierInfo(currentStats.rating);
   }, [currentStats.rating, gameMode]);
 
   const winRate = calculateWinRate(currentStats.wins, currentStats.losses, currentStats.draws);

@@ -24,7 +24,7 @@ function formatDate(date: string) {
   return new Date(date).toLocaleDateString('pt-BR', { month: "short", day: "numeric" });
 }
 
-const UniqueLoginsStats = ({ logins, total }: UniqueLoginsStatsProps) => {
+const UniqueLoginsStats = ({ logins }: UniqueLoginsStatsProps) => {
   const { t } = useTranslation();
   const [loginsPeriod, setLoginsPeriod] = useState<7 | 15 | 30>(7);
   const [rankData, setRankData] = useState<RegionData[]>([]);

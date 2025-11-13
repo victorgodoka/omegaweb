@@ -19,6 +19,7 @@ interface DeckData {
   color: string
   cardId?: number
   cardImage?: string
+  [key: string]: string | number | undefined
 }
 
 const COLORS = [
