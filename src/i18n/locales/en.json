@@ -62,7 +62,7 @@
     "error_loading": "Failed to fetch leaderboard data",
     "api_unsuccessful": "API returned unsuccessful response",
     "tcg_format": "TCG Format",
-    "ocg_format": "OCG Format",
+    "ocg_format": "Genesys Format",
     "rating": "Rating",
     "tier_alt": "{{tier}} Tier",
     "win_loss": "{{wins}}W - {{losses}}L",

@@ -1,13 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import type { LeaderboardResponse, LeaderboardPlayer } from './types';
+import type { LeaderboardData, LeaderboardPlayer } from './types';
 import { PlayerAvatar } from '@/components/PlayerAvatar';
 import { Link } from 'react-router';
 import { getTierInfo } from '@/utils/Functions';
+import { api } from '@/utils/Api';
 
 const Leaderboard: React.FC = () => {
   const { t } = useTranslation();
-  const [leaderboardData, setLeaderboardData] = useState<LeaderboardResponse | null>(null);
+  const [leaderboardData, setLeaderboardData] = useState<LeaderboardData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedFormat, setSelectedFormat] = useState<'TCG' | 'OCG'>('TCG');
@@ -18,19 +19,18 @@ const Leaderboard: React.FC = () => {
         setLoading(true);
         setError(null);
 
-        const response = await fetch(import.meta.env.VITE_API_URL + '/leaderboard');
+        const response = await api.main.getLeaderboard();
         if (!response.ok) {
-          setError(t('leaderboard_page.error_loading'));
+          setError(response.message || t('leaderboard_page.error_loading'));
           return;
         }
 
-        const data: LeaderboardResponse = await response.json();
-        if (!data.success) {
+        if (!response.success || !response.data) {
           setError(t('leaderboard_page.api_unsuccessful'));
           return;
         }
 
-        setLeaderboardData(data);
+        setLeaderboardData(response.data as unknown as LeaderboardData);
       } catch (err) {
         setError(t('common.network_error'));
       } finally {
@@ -206,7 +206,7 @@ const Leaderboard: React.FC = () => {
     );
   }
 
-  const currentPlayers = leaderboardData?.data[selectedFormat] || [];
+  const currentPlayers = leaderboardData && leaderboardData[selectedFormat] || [];
 
   return (
     <div className="min-h-screen bg-zinc-900 text-zinc-100 mt-8">

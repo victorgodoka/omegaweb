@@ -1,7 +1,7 @@
 import React, { useState, useCallback, lazy, Suspense } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Icon } from '@iconify/react';
-import { fetchApi } from '@/utils/Api';
+import { api } from '@/utils/Api';
 import { useToast } from '@/contexts/ToastContext';
 import type { FormData, FormErrors, ConvertData } from './types';
 
@@ -119,7 +119,7 @@ const PDFGenerator: React.FC = () => {
 
     try {
       const encodedCode = encodeURIComponent(deckCode.trim());
-      const response = await fetchApi(`convert?code=${encodedCode}`);
+      const response = await api.main.get(`convert?code=${encodedCode}`);
 
       if (response.ok && response.data) {
         if (response.success) {
@@ -208,17 +208,13 @@ const PDFGenerator: React.FC = () => {
         apiData.day = day;
       }
 
-      // Build query parameters
-      const params = new URLSearchParams(apiData);
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/pdf/generate?${params}`);
+      const response = await api.main.generatePDF(apiData);
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to generate PDF');
+      if (!response.ok || !response.data) {
+        throw new Error(response.message || 'Failed to generate PDF');
       }
 
-      const blob = await response.blob();
-      return blob;
+      return response.data as Blob;
     } catch (error) {
       showError(error instanceof Error ? error.message : 'Failed to generate PDF. Please try again.');
       setErrors({

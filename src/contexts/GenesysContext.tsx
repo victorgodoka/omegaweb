@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import type { ReactNode } from 'react';
 import { useLoadingContext } from '@/contexts/LoadingContext';
+import { api } from '@/utils/Api';
 
 interface GenesysData {
   [cardId: number]: number; // cardId -> points
@@ -114,13 +115,15 @@ export const GenesysProvider: React.FC<GenesysProviderProps> = ({ children }) =>
         return;
       }
       
-      const response = await fetch('https://raw.githubusercontent.com/Pluani/ygoanihelpbanlists/refs/heads/main/Genesys.conf');
+      const response = await api.external.github.getRawContent(
+        'https://raw.githubusercontent.com/Pluani/ygoanihelpbanlists/refs/heads/main/Genesys.conf'
+      );
       
-      if (!response.ok) {
-        throw new Error(`Failed to fetch Genesys config: ${response.status} ${response.statusText}`);
+      if (!response.ok || !response.data) {
+        throw new Error(response.message || 'Failed to fetch Genesys config');
       }
 
-      const configText = await response.text();
+      const configText = response.data;
       
       // Parse the raw fetched data first (without hardcoded points)
       const rawFetchedData: GenesysData = {};

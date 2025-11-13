@@ -35,7 +35,7 @@
     "error_loading": "Falha ao buscar dados da classificação",
     "api_unsuccessful": "API retornou resposta sem sucesso",
     "tcg_format": "Formato TCG",
-    "ocg_format": "Formato OCG",
+    "ocg_format": "Formato Genesys",
     "rating": "Avaliação",
     "tier_alt": "Tier {{tier}}",
     "win_loss": "{{wins}}V - {{losses}}D",

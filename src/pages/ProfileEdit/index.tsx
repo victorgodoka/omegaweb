@@ -8,7 +8,7 @@ import { Icon } from '@iconify/react';
 import { useAuthContext } from '@/contexts/AuthContext';
 import { useCache } from '@/contexts/CacheContext';
 import { PlayerAvatar } from '@/components/PlayerAvatar';
-import type { ProfileCustomizationResponse } from '@/pages/Profile/types';
+import { api } from '@/utils/Api';
 
 
 
@@ -51,10 +51,9 @@ const ProfileEdit: React.FC = () => {
       if (!user) return;
       
       try {
-        const response = await fetch(`${import.meta.env.VITE_API_URL}/duelist?id=${user.id}`);
-        if (response.ok) {
-          const apiResponse: ProfileCustomizationResponse = await response.json();
-          const profileData = apiResponse.data;
+        const response = await api.external.duelistsUnite.getPlayerCustomization(user.id);
+        if (response.success && response.data) {
+          const profileData = response.data;
           const currentBio = profileData.duelist_bio || '';
           setBio(currentBio);
           setOriginalBio(currentBio);
@@ -221,14 +220,10 @@ const ProfileEdit: React.FC = () => {
         formData.append('coverImage', coverImage);
       }
 
-      const response = await fetch(`${import.meta.env.VITE_API_URL}/duelist`, {
-        method: 'POST',
-        // Don't set Content-Type header - let browser set it with boundary for FormData
-        body: formData,
-      });
+      const response = await api.external.duelistsUnite.updatePlayerCustomization(formData);
 
-      if (!response.ok) {
-        throw new Error('Failed to update profile');
+      if (!response.ok || !response.success) {
+        throw new Error(response.message || 'Failed to update profile');
       }
 
       setSuccess(t('profile_edit.save_success'));

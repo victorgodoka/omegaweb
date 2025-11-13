@@ -1,3 +1,5 @@
+import type { LeaderboardResponse } from "@/pages/Leaderboard/types";
+
 // API Configuration
 export const API_ENDPOINTS = {
   // Main API (omega-server-v3)
@@ -5,7 +7,7 @@ export const API_ENDPOINTS = {
   
   // External APIs
   DUELISTS_UNITE: 'https://duelistsunite.org',
-  DUELISTS_UNITE_V3: 'https://duelistsunite.org/omega-web/v3',
+  DUELISTS_UNITE_V3: import.meta.env.VITE_API_URL,
   DISCORD: 'https://discord.com/api',
   FORUM: 'https://forum.duelistsunite.org',
   YGOPRODECK: 'https://db.ygoprodeck.com/api/v7',
@@ -142,12 +144,53 @@ export const api = {
         return { ok: false, message: error instanceof Error ? error.message : 'Unknown error' };
       }
     },
+
+    // Leaderboard endpoint
+    getLeaderboard: async () => {
+      try {
+        const response = await fetchApi<LeaderboardResponse>('leaderboard', { method: 'GET' });
+        return response;
+      } catch (error) {
+        console.error('Leaderboard API Error:', error);
+        return { ok: false, message: error instanceof Error ? error.message : 'Unknown error' };
+      }
+    },
+
+    // PDF Generation endpoint
+    generatePDF: async (params: Record<string, string>) => {
+      try {
+        const queryParams = new URLSearchParams(params).toString();
+        const url = `${API_ENDPOINTS.MAIN}/pdf/generate?${queryParams}`;
+        
+        const response = await fetch(url);
+        
+        if (!response.ok) {
+          const errorData = await response.json();
+          return { 
+            ok: false, 
+            message: errorData.error || 'Failed to generate PDF',
+            status: response.status 
+          };
+        }
+
+        const blob = await response.blob();
+        return { 
+          ok: true, 
+          data: blob,
+          status: response.status 
+        };
+      } catch (error) {
+        console.error('PDF Generation Error:', error);
+        return { ok: false, message: error instanceof Error ? error.message : 'Unknown error' };
+      }
+    },
   },
 
   // External API helpers
   external: {
     // Duelists Unite API
     duelistsUnite: {
+      // Get player basic data
       getPlayer: async (discordId: string) => {
         try {
           const response = await fetch(`${API_ENDPOINTS.DUELISTS_UNITE_V3}/profile?id=${discordId}`);
@@ -163,6 +206,82 @@ export const api = {
         } catch (error) {
           console.error('Duelists Unite API Error:', error);
           return { ok: false, message: error instanceof Error ? error.message : 'Unknown error' };
+        }
+      },
+
+      // Get player profile customization data
+      getPlayerCustomization: async (discordId: string) => {
+        try {
+          const response = await fetch(`${API_ENDPOINTS.DUELISTS_UNITE_V3}/duelist?id=${discordId}`);
+          if (!response.ok) {
+            if (response.status === 404) return { success: false, data: null };
+            throw new Error('Failed to fetch player profile');
+          }
+          return await response.json();
+        } catch (error) {
+          console.error('Error fetching player profile:', error);
+          return { success: false, data: null };
+        }
+      },
+
+      // Update player profile customization (FormData for file uploads)
+      updatePlayerCustomization: async (formData: FormData) => {
+        try {
+          const response = await fetch(`${API_ENDPOINTS.DUELISTS_UNITE_V3}/duelist`, {
+            method: 'POST',
+            body: formData,
+            // Don't set Content-Type header - let browser set it with boundary for FormData
+          });
+          
+          if (!response.ok) {
+            const errorData = await response.json();
+            return { 
+              ok: false, 
+              success: false,
+              message: errorData.error || 'Failed to update profile',
+              status: response.status 
+            };
+          }
+          
+          const data = await response.json();
+          return { 
+            ok: true, 
+            success: true,
+            data,
+            status: response.status 
+          };
+        } catch (error) {
+          console.error('Error updating player profile:', error);
+          return { 
+            ok: false, 
+            success: false,
+            message: error instanceof Error ? error.message : 'Unknown error' 
+          };
+        }
+      },
+      
+      // Get player decks and match history with pagination
+      getPlayerDecks: async (discordId: string, options?: { tcgPage?: number, genesysPage?: number }) => {
+        try {
+          const params = new URLSearchParams();
+          params.append('id', discordId);
+          
+          if (options?.tcgPage) {
+            params.append('tcgPage', options.tcgPage.toString());
+          }
+          
+          if (options?.genesysPage) {
+            params.append('genesysPage', options.genesysPage.toString());
+          }
+          
+          const response = await fetch(`${API_ENDPOINTS.DUELISTS_UNITE_V3}/decks?${params.toString()}`);
+          if (!response.ok) {
+            throw new Error('Failed to fetch player decks');
+          }
+          return await response.json();
+        } catch (error) {
+          console.error('Error fetching player decks:', error);
+          return { success: false, data: null };
         }
       },
 
@@ -270,6 +389,22 @@ export const api = {
           return { data, ok: true };
         } catch (error) {
           console.error('Omega Decks API Error:', error);
+          return { ok: false, message: error instanceof Error ? error.message : 'Unknown error' };
+        }
+      },
+    },
+
+    // GitHub Raw Content
+    github: {
+      getRawContent: async (url: string) => {
+        try {
+          const response = await fetch(url);
+          if (!response.ok) {
+            throw new Error(`Failed to fetch GitHub content: ${response.status} ${response.statusText}`);
+          }
+          return { data: await response.text(), ok: true };
+        } catch (error) {
+          console.error('GitHub API Error:', error);
           return { ok: false, message: error instanceof Error ? error.message : 'Unknown error' };
         }
       },

@@ -105,6 +105,6 @@ export const getTierInfo = (rating: number, format: 'TCG' | 'OCG'): { name: stri
 
   return {
     name: tierName,
-    image: `/badges/${format}/${tierName.toLowerCase()}.png`
+    image: `/badges/TCG/${tierName.toLowerCase()}.png`
   };
 };

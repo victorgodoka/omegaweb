@@ -22,7 +22,12 @@ export interface ProfileData {
 
 export interface ProfileStatsResponse {
   success: boolean
-  data: ProfileStatsData
+  data: ProfileStatsQueue
+}
+
+export interface ProfileStatsQueue {
+  tcg: ProfileStatsData,
+  genesys: ProfileStatsData
 }
 
 export interface ProfileStatsData {
@@ -30,6 +35,14 @@ export interface ProfileStatsData {
   totalGaming: string
   mostUsedArchetypes: MostUsedArchetype[]
   matchHistory: MatchHistory[]
+  pagination: Pagination
+}
+
+export interface Pagination {
+  currentPage: number
+  pageSize: number
+  totalMatches: number
+  totalPages: number
 }
 
 export interface OpponentDeck {
