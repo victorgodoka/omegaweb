@@ -20,12 +20,13 @@ interface UniqueLoginsStatsProps {
   total: number;
 }
 
-function formatDate(date: string) {
-  return new Date(date).toLocaleDateString('pt-BR', { month: "short", day: "numeric" });
-}
-
 const UniqueLoginsStats = ({ logins }: UniqueLoginsStatsProps) => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const locale = (i18n.language || 'en-US').startsWith('pt') ? 'pt-BR' : 'en-US';
+
+  function formatDate(date: string) {
+    return new Date(date).toLocaleDateString(locale, { month: "short", day: "numeric" });
+  }
   const [loginsPeriod, setLoginsPeriod] = useState<7 | 15 | 30>(7);
   const [rankData, setRankData] = useState<RegionData[]>([]);
 
@@ -73,7 +74,7 @@ const UniqueLoginsStats = ({ logins }: UniqueLoginsStatsProps) => {
     const dayOfWeekCounts: { [key: string]: { total: number; count: number } } = {};
     sortedLogins.forEach(login => {
       const date = new Date(login.LogDate);
-      const dayName = date.toLocaleDateString('pt-BR', { weekday: 'long' });
+      const dayName = date.toLocaleDateString(locale, { weekday: 'long' });
       if (!dayOfWeekCounts[dayName]) {
         dayOfWeekCounts[dayName] = { total: 0, count: 0 };
       }
@@ -101,7 +102,7 @@ const UniqueLoginsStats = ({ logins }: UniqueLoginsStatsProps) => {
       maxDay,
       maxAvg
     };
-  }, [logins]);
+  }, [logins, locale]);
 
   if (!loginStats) return null;
 

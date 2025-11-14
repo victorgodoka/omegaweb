@@ -291,7 +291,7 @@ const ProfileEdit: React.FC = () => {
                       alt={t('profile_edit.cover_banner')}
                       className="w-full h-32 object-cover rounded-lg border border-zinc-600"
                     />
-                    <p className="text-xs text-zinc-400 mt-1">PNG, JPG or GIF (MAX. 5MB)</p>
+                    <p className="text-xs text-zinc-400 mt-1">{t('profile_edit.cover_banner_hint')}</p>
                   </div>
                 )}
               </div>
@@ -564,7 +564,7 @@ const ProfileEdit: React.FC = () => {
                         target="_blank"
                         rel="noopener noreferrer"
                         className="text-purple-500 hover:text-purple-400 transition-colors"
-                        title={`Twitch: ${twitchUsername}`}
+                        title={t('profile_edit.twitch_tooltip', { username: twitchUsername })}
                       >
                         <Icon icon="mdi:twitch" className="w-5 h-5" />
                       </a>
@@ -575,7 +575,7 @@ const ProfileEdit: React.FC = () => {
                         target="_blank"
                         rel="noopener noreferrer"
                         className="text-red-500 hover:text-red-400 transition-colors"
-                        title={`YouTube: ${youtubeUsername}`}
+                        title={t('profile_edit.youtube_tooltip', { username: youtubeUsername })}
                       >
                         <Icon icon="mdi:youtube" className="w-5 h-5" />
                       </a>
@@ -586,7 +586,7 @@ const ProfileEdit: React.FC = () => {
                         target="_blank"
                         rel="noopener noreferrer"
                         className="text-blue-400 hover:text-blue-300 transition-colors"
-                        title={`X: ${twitterUsername}`}
+                        title={t('profile_edit.twitter_tooltip', { username: twitterUsername })}
                       >
                         <Icon icon="mdi:twitter" className="w-5 h-5" />
                       </a>
@@ -597,7 +597,7 @@ const ProfileEdit: React.FC = () => {
                         target="_blank"
                         rel="noopener noreferrer"
                         className="text-pink-500 hover:text-pink-400 transition-colors"
-                        title={`Instagram: ${instagramUsername}`}
+                        title={t('profile_edit.instagram_tooltip', { username: instagramUsername })}
                       >
                         <Icon icon="mdi:instagram" className="w-5 h-5" />
                       </a>

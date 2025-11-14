@@ -33,7 +33,7 @@ const getRankColor = (rank: string): string => {
 };
 
 // Ordem dos ranks de Bronze para Omega
-const rankOrder = ["Bronze", "Silver", "Gold", "Platinum", "Diamond", "Master", "Omega"];
+const rankOrder = ["Unranked", "Bronze", "Silver", "Gold", "Platinum", "Diamond", "Master", "Omega"];
 
 const RankedUserCountCard = ({ data }: RankedUserCountCardProps) => {
   const [selectedRegion, setSelectedRegion] = useState<'TCG' | 'Genesys'>('TCG');
@@ -48,7 +48,6 @@ const RankedUserCountCard = ({ data }: RankedUserCountCardProps) => {
 
   // Filtrar Unranked e ordenar de Bronze para Omega
   const ranksToShow = regionData.ranks
-    .filter(r => r.rank !== 'Unranked')
     .sort((a, b) => rankOrder.indexOf(a.rank) - rankOrder.indexOf(b.rank));
 
   // Usar escala logarítmica para melhor visualização

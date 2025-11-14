@@ -11,6 +11,7 @@ import { useGenesys } from '../../contexts/GenesysContext';
 import Toast, { type ToastType } from '../../components/ui/Toast';
 import CardFiltersComponent from './components/CardFilters';
 import type { Card, DeckCard } from './types';
+import { useTranslation } from 'react-i18next';
 
 interface ToastMessage {
   id: string;
@@ -82,6 +83,7 @@ const CardItem = React.memo<{
 });
 
 const DeckEditor: React.FC = () => {
+  const { t } = useTranslation();
   const { cardStats, isLoading, error } = useCache();
   const [showInfoModal, setShowInfoModal] = useState(false);
   const [activeDeckTab, setActiveDeckTab] = useState<'main' | 'extra' | 'side'>('main');
@@ -704,7 +706,7 @@ const DeckEditor: React.FC = () => {
     return (
       <div className="p-8">
         <div className="flex items-center justify-center h-64">
-          <div className="text-red-400 text-xl">Error: {error}</div>
+          <div className="text-red-400 text-xl">{t('deck_editor.error_prefix')}: {error}</div>
         </div>
       </div>
     );
@@ -719,7 +721,7 @@ const DeckEditor: React.FC = () => {
             value={deckName}
             onChange={(e) => setDeckName(e.target.value)}
             className="bg-zinc-800 my-2 w-full border border-zinc-600 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-            placeholder="Deck Name"
+            placeholder={t('deck_editor.deck_name_placeholder')}
           />
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             <div className="flex items-center gap-3 flex-wrap">
@@ -727,7 +729,7 @@ const DeckEditor: React.FC = () => {
                 onClick={exportToYDK}
                 className="px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition-colors"
               >
-                Export YDK
+                {t('deck_editor.export_ydk')}
               </button>
               <button
                 onClick={generateCodes}
@@ -739,7 +741,7 @@ const DeckEditor: React.FC = () => {
                 ) : (
                   <Icon icon="mdi:code-tags" className="text-sm" />
                 )}
-                Generate Codes
+                {t('deck_editor.generate_codes')}
               </button>
               <button
                 onClick={exportToOmega}
@@ -751,21 +753,21 @@ const DeckEditor: React.FC = () => {
                 ) : (
                   <Icon icon="mdi:upload" className="text-sm" />
                 )}
-                Export to Omega
+                {t('deck_editor.export_to_omega')}
               </button>
               <button
                 onClick={() => setShowImportDialog(true)}
                 className="px-3 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg text-sm font-medium transition-colors flex items-center gap-2"
               >
                 <Icon icon="mdi:import" className="text-sm" />
-                Import
+                {t('deck_editor.import')}
               </button>
               <button
                 onClick={handleClearDeck}
                 className="px-3 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg text-sm font-medium transition-colors flex items-center gap-2"
               >
                 <Icon icon="mdi:delete" className="text-sm" />
-                Clear
+                {t('deck_editor.clear')}
               </button>
             </div>
 
@@ -799,7 +801,7 @@ const DeckEditor: React.FC = () => {
               <button
                 onClick={() => setShowInfoModal(true)}
                 className="p-2 text-zinc-400 hover:text-white transition-colors"
-                title="Help"
+                title={t('deck_editor.help')}
               >
                 <Icon icon="mdi:help-circle" className="text-lg" />
               </button>
@@ -937,7 +939,7 @@ const DeckEditor: React.FC = () => {
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search with Card Name & Conditions"
+                placeholder={t('deck_editor.search_input_placeholder')}
                 className="w-full bg-zinc-700 border border-zinc-600 rounded-lg pl-10 pr-12 py-2 text-white placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
               <Icon icon="mdi:magnify" className="absolute left-3 top-1/2 transform -translate-y-1/2 text-zinc-400" />
@@ -955,7 +957,7 @@ const DeckEditor: React.FC = () => {
                   }`}
               >
                 <Icon icon="mdi:filter" />
-                Filters
+                {t('deck_editor.filters')}
                 {hasActiveFilters && (
                   <div className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full border-2 border-zinc-800" />
                 )}
@@ -966,12 +968,12 @@ const DeckEditor: React.FC = () => {
                 onChange={(e) => setSortBy(e.target.value)}
                 className="bg-zinc-700 border border-zinc-600 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
-                <option value="name">Name</option>
-                <option value="type">Type</option>
-                <option value="level">Level</option>
-                <option value="atk">ATK</option>
-                <option value="def">DEF</option>
-                {deck.banlist === 'TCG Genesys' && <option value="points">Points</option>}
+                <option value="name">{t('deck_editor.sort_name')}</option>
+                <option value="type">{t('deck_editor.sort_type')}</option>
+                <option value="level">{t('deck_editor.sort_level')}</option>
+                <option value="atk">{t('deck_editor.sort_atk')}</option>
+                <option value="def">{t('deck_editor.sort_def')}</option>
+                {deck.banlist === 'TCG Genesys' && <option value="points">{t('deck_editor.sort_points')}</option>}
               </select>
 
               <select
@@ -992,23 +994,23 @@ const DeckEditor: React.FC = () => {
           {filteredCards.length === 0 && allFilteredCards.length === 0 && !isSearching ? (
             <div className="flex flex-col items-center justify-center h-64 text-zinc-500">
               <Icon icon="mdi:magnify" className="text-6xl mb-4" />
-              <h3 className="text-xl font-medium mb-2">Search for Cards</h3>
-              <p className="text-zinc-400">Enter a card name or use filters to see results</p>
+              <h3 className="text-xl font-medium mb-2">{t('deck_editor.search_empty_title')}</h3>
+              <p className="text-zinc-400">{t('deck_editor.search_empty_subtitle')}</p>
             </div>
           ) : isSearching ? (
             <div className="flex flex-col items-center justify-center h-64 text-zinc-500">
               <Icon icon="mdi:loading" className="text-6xl mb-4 animate-spin" />
-              <h3 className="text-xl font-medium mb-2">Searching...</h3>
-              <p className="text-zinc-400">Finding cards matching your query</p>
+              <h3 className="text-xl font-medium mb-2">{t('deck_editor.search_loading_title')}</h3>
+              <p className="text-zinc-400">{t('deck_editor.search_loading_subtitle')}</p>
             </div>
           ) : (
             <>
               {filteredCards.length > 0 && allFilteredCards.length > 0 && <div className="mb-4">
                 <h3 className="text-lg font-medium text-white">
-                  Search Results ({allFilteredCards.length} results)
+                  {t('deck_editor.search_results_title', { count: allFilteredCards.length })}
                 </h3>
                 <p className="text-sm text-zinc-400">
-                  Click cards to add them to the {activeDeckTab} deck • Right-click for details
+                  {t('deck_editor.search_results_hint', { deck: activeDeckTab })}
                 </p>
               </div>}
 
@@ -1029,8 +1031,8 @@ const DeckEditor: React.FC = () => {
               {filteredCards.length === 0 && allFilteredCards.length === 0 && (
                 <div className="flex flex-col items-center justify-center h-32 text-zinc-500">
                   <Icon icon="mdi:card-search" className="text-4xl mb-2" />
-                  <p>No cards found matching your search and filters</p>
-                  <p className="text-xs text-zinc-600 mt-1">Try adjusting your search terms or clearing some filters</p>
+                  <p>{t('deck_editor.no_results_title')}</p>
+                  <p className="text-xs text-zinc-600 mt-1">{t('deck_editor.no_results_subtitle')}</p>
                 </div>
               )}
 
@@ -1041,7 +1043,7 @@ const DeckEditor: React.FC = () => {
                     className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors flex items-center gap-2"
                   >
                     <Icon icon="mdi:plus" />
-                    Load More Cards ({filteredCards.length} of {allFilteredCards.length} shown)
+                    {t('deck_editor.load_more', { shown: filteredCards.length, total: allFilteredCards.length })}
                   </button>
                 </div>
               )}
@@ -1213,7 +1215,7 @@ const DeckEditor: React.FC = () => {
 
           <div className="relative bg-zinc-900 border border-zinc-700 rounded-lg p-6 w-full max-w-md mx-4 shadow-2xl">
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-semibold text-white">Import Deck</h2>
+              <h2 className="text-lg font-semibold text-white">{t('deck_editor.import_dialog_title')}</h2>
               <button
                 onClick={() => setShowImportDialog(false)}
                 className="p-2 text-zinc-400 hover:text-white transition-colors"
@@ -1225,12 +1227,12 @@ const DeckEditor: React.FC = () => {
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-zinc-300 mb-2">
-                  Deck Code
+                  {t('deck_editor.import_deck_code_label')}
                 </label>
                 <textarea
                   value={importCode}
                   onChange={(e) => setImportCode(e.target.value)}
-                  placeholder="Paste your deck code here..."
+                  placeholder={t('deck_editor.import_deck_code_placeholder')}
                   className="w-full h-32 px-3 py-2 bg-zinc-800 border border-zinc-600 rounded-lg text-white placeholder-zinc-400 resize-none focus:outline-none focus:ring-2 focus:ring-green-500"
                 />
               </div>
@@ -1238,14 +1240,14 @@ const DeckEditor: React.FC = () => {
               <div className="flex items-center justify-center">
                 <div className="flex items-center gap-2 text-zinc-400 text-sm">
                   <div className="h-px bg-zinc-600 flex-1"></div>
-                  <span>OR</span>
+                  <span>{t('deck_editor.import_or')}</span>
                   <div className="h-px bg-zinc-600 flex-1"></div>
                 </div>
               </div>
 
               <div>
                 <label className="block text-sm font-medium text-zinc-300 mb-2">
-                  Load YDK File
+                  {t('deck_editor.import_ydk_label')}
                 </label>
                 <div className="flex items-center gap-3">
                   <input
@@ -1260,11 +1262,11 @@ const DeckEditor: React.FC = () => {
                     className="flex-1 px-4 py-2 bg-zinc-700 hover:bg-zinc-600 border border-zinc-600 rounded-lg text-white cursor-pointer transition-colors flex items-center justify-center gap-2"
                   >
                     <Icon icon="mdi:file-upload" />
-                    Choose YDK File
+                    {t('deck_editor.import_ydk_button')}
                   </label>
                 </div>
                 <p className="text-xs text-zinc-500 mt-1">
-                  Select a .ydk file to directly load cards into your deck
+                  {t('deck_editor.import_ydk_hint')}
                 </p>
               </div>
 
@@ -1273,7 +1275,7 @@ const DeckEditor: React.FC = () => {
                   onClick={() => setShowImportDialog(false)}
                   className="px-4 py-2 text-zinc-400 hover:text-white transition-colors"
                 >
-                  Cancel
+                  {t('deck_editor.import_cancel')}
                 </button>
                 <button
                   onClick={handleImportDeck}
@@ -1281,7 +1283,7 @@ const DeckEditor: React.FC = () => {
                   className="px-4 py-2 bg-green-600 hover:bg-green-700 disabled:bg-zinc-600 disabled:cursor-not-allowed text-white rounded-lg transition-colors flex items-center gap-2"
                 >
                   {isImporting && <Icon icon="mdi:loading" className="animate-spin" />}
-                  {isImporting ? 'Importing...' : 'Import'}
+                  {isImporting ? t('deck_editor.importing') : t('deck_editor.import')}
                 </button>
               </div>
             </div>
@@ -1300,7 +1302,7 @@ const DeckEditor: React.FC = () => {
 
           <div className="relative bg-zinc-900 border border-zinc-700 rounded-lg p-6 w-full max-w-2xl mx-4 shadow-2xl">
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-semibold text-white">Generated Deck Codes</h2>
+              <h2 className="text-lg font-semibold text-white">{t('deck_editor.generated_codes_title')}</h2>
               <button
                 onClick={() => setShowCodesDialog(false)}
                 className="p-2 text-zinc-400 hover:text-white transition-colors"
@@ -1313,7 +1315,7 @@ const DeckEditor: React.FC = () => {
               {/* YDKE Code */}
               <div>
                 <label className="block text-sm font-medium text-zinc-300 mb-2">
-                  YDKE Code
+                  {t('deck_editor.ydke_code_label')}
                 </label>
                 <div className="relative">
                   <input
@@ -1328,7 +1330,7 @@ const DeckEditor: React.FC = () => {
                       showToast('success', 'YDKE code copied to clipboard!');
                     }}
                     className="absolute right-2 top-1/2 transform -translate-y-1/2 p-1 text-zinc-400 hover:text-white transition-colors"
-                    title="Copy to clipboard"
+                    title={t('deck_editor.copy_to_clipboard')}
                   >
                     <Icon icon="mdi:content-copy" className="text-lg" />
                   </button>
@@ -1338,7 +1340,7 @@ const DeckEditor: React.FC = () => {
               {/* Omega Code */}
               <div>
                 <label className="block text-sm font-medium text-zinc-300 mb-2">
-                  Omega Code
+                  {t('deck_editor.omega_code_label')}
                 </label>
                 <div className="relative">
                   <input
@@ -1366,7 +1368,7 @@ const DeckEditor: React.FC = () => {
                 onClick={() => setShowCodesDialog(false)}
                 className="px-4 py-2 bg-zinc-700 hover:bg-zinc-600 text-white rounded-lg text-sm font-medium transition-colors"
               >
-                Close
+                {t('deck_editor.close')}
               </button>
             </div>
           </div>

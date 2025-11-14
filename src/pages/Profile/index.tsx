@@ -4,6 +4,7 @@ import { Icon } from '@iconify/react';
 import { api } from '@/utils/Api';
 import { getTierInfo, tcgHref } from '@/utils/Functions';
 import { PlayerAvatar } from '@/components/PlayerAvatar';
+import { useTranslation } from 'react-i18next';
 import type {
   ProfileData,
   ProfileStatsQueue,
@@ -16,8 +17,9 @@ import { useAuthContext } from '@/contexts/AuthContext';
 const ProfileSkeleton = lazy(() => import('./components/ProfileSkeleton'));
 const MatchHistoryCard = lazy(() => import('./components/MatchHistoryCard'));
 
-const Profile2: React.FC = () => {
+const Profile: React.FC = () => {
   const { id } = useParams<{ id: string }>();
+  const { t } = useTranslation();
   const { cardStats } = useCache();
   const { user } = useAuthContext();
   const [gameMode, setGameMode] = useState<'tcg' | 'genesys'>('tcg');
@@ -25,13 +27,34 @@ const Profile2: React.FC = () => {
   const [statsData, setStatsData] = useState<ProfileStatsQueue | null>(null);
   const [customizationData, setCustomizationData] = useState<ProfileCustomizationData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [loadingStats, setLoadingStats] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [pagination, setPagination] = useState<{ tcg: number; genesys: number }>({ tcg: 1, genesys: 1 });
+
+  // Fetch stats and match history only
+  const fetchStats = useCallback(async () => {
+    if (!id) return;
+
+    try {
+      setLoadingStats(true);
+      const decksResponse = await api.external.duelistsUnite.getPlayerDecks(id, {
+        tcgPage: pagination.tcg,
+        genesysPage: pagination.genesys
+      });
+      if (decksResponse.success && decksResponse.data) {
+        setStatsData(decksResponse.data);
+      }
+    } catch (err) {
+      console.error('Error fetching stats data:', err);
+    } finally {
+      setLoadingStats(false);
+    }
+  }, [id, pagination.tcg, pagination.genesys]);
 
   // Fetch all profile data
   const fetchProfileData = useCallback(async () => {
     if (!id) {
-      setError('Profile ID is required');
+      setError(t('profile_page.error_profile_id_required'));
       setLoading(false);
       return;
     }
@@ -45,13 +68,13 @@ const Profile2: React.FC = () => {
       if (profileResponse.ok && profileResponse.data) {
         setProfileData(profileResponse.data);
       } else {
-        throw new Error('Failed to load profile data');
+        throw new Error(t('profile_page.error_failed_load_profile'));
       }
 
       // Fetch stats and match history
       const decksResponse = await api.external.duelistsUnite.getPlayerDecks(id, {
-        tcgPage: pagination.tcg,
-        genesysPage: pagination.genesys
+        tcgPage: 1,
+        genesysPage: 1
       });
       if (decksResponse.success && decksResponse.data) {
         setStatsData(decksResponse.data);
@@ -69,22 +92,22 @@ const Profile2: React.FC = () => {
       }
     } catch (err) {
       console.error('Error fetching profile data:', err);
-      setError(err instanceof Error ? err.message : 'An error occurred');
+      setError(err instanceof Error ? err.message : t('profile_page.error_generic'));
     } finally {
       setLoading(false);
     }
-  }, [id, pagination.tcg, pagination.genesys]);
+  }, [id]);
 
   useEffect(() => {
     fetchProfileData();
   }, [id]);
 
-  // Handle pagination changes
+  // Handle pagination changes - only reload stats
   useEffect(() => {
     if (pagination.tcg > 1 || pagination.genesys > 1) {
-      fetchProfileData();
+      fetchStats();
     }
-  }, [pagination.tcg, pagination.genesys]);
+  }, [pagination.tcg, pagination.genesys, fetchStats]);
 
   const calculateWinRate = (wins: number, losses: number, draws: number = 0): number => {
     const total = wins + losses + draws;
@@ -174,7 +197,7 @@ const Profile2: React.FC = () => {
         <div className="min-h-screen bg-zinc-900 flex items-center justify-center">
           <div className="text-center">
             <Icon icon="mdi:loading" className="text-6xl text-blue-500 mx-auto mb-4 animate-spin" />
-            <p className="text-zinc-300">Loading profile...</p>
+            <p className="text-zinc-300">{t('profile_page.loading')}</p>
           </div>
         </div>
       }>
@@ -188,8 +211,8 @@ const Profile2: React.FC = () => {
       <div className="min-h-screen bg-zinc-900 flex items-center justify-center">
         <div className="text-center">
           <Icon icon="mdi:account-off" className="text-6xl text-zinc-600 mx-auto mb-4" />
-          <h2 className="text-2xl font-bold text-zinc-300 mb-2">Profile Not Found</h2>
-          <p className="text-zinc-500">{error || 'The profile you\'re looking for doesn\'t exist.'}</p>
+          <h2 className="text-2xl font-bold text-zinc-300 mb-2">{t('profile_page.not_found_title')}</h2>
+          <p className="text-zinc-500">{error || t('profile_page.not_found_message')}</p>
         </div>
       </div>
     );
@@ -256,7 +279,7 @@ const Profile2: React.FC = () => {
                 </p>
                 <div className="flex items-center justify-center sm:justify-start gap-2 text-sm text-zinc-400 mb-3">
                   <Icon icon="mdi:clock-outline" className="text-base" />
-                  <span>Last seen: {formatLastSeen(profileData.lastlogin)}</span>
+                  <span>{t('profile_page.last_seen_label')}: {formatLastSeen(profileData.lastlogin)}</span>
                 </div>
 
                 {/* Social Links */}
@@ -326,7 +349,7 @@ const Profile2: React.FC = () => {
                   : 'text-zinc-300 hover:bg-zinc-700/50'
               }`}
             >
-              TCG
+              {t('statistics2.tcg')}
             </button>
             <button
               onClick={() => {
@@ -339,7 +362,7 @@ const Profile2: React.FC = () => {
                   : 'text-zinc-300 hover:bg-zinc-700/50'
               }`}
             >
-              Genesys
+              {t('statistics2.genesys')}
             </button>
           </div>
         </div>
@@ -353,7 +376,7 @@ const Profile2: React.FC = () => {
                 <div className="flex-1">
                   <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
                     <Icon icon="mdi:card-account-details" className="text-blue-400" />
-                    About
+                    {t('profile_page.about')}
                   </h2>
                   <div
                     className="text-zinc-300 leading-relaxed prose prose-invert prose-sm"
@@ -362,17 +385,17 @@ const Profile2: React.FC = () => {
                 </div>
                 {customizationData.duelist_favorite && (
                   <div className="flex flex-col items-center">
-                    <h3 className="text-sm font-medium text-zinc-400 mb-2">Favorite Card</h3>
+                    <h3 className="text-sm font-medium text-zinc-400 mb-2">{t('profile.favorite_card')}</h3>
                     <a
                       href={tcgHref(cardStats.find(card => card.id === customizationData.duelist_favorite)?.name)}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="relative w-32 h-44 rounded-lg overflow-hidden border-2 border-amber-400/30 shadow-xl transition-all hover:scale-105 hover:border-amber-400/60 hover:shadow-2xl hover:shadow-amber-400/20"
-                      title={cardStats.find(card => card.id === customizationData.duelist_favorite)?.name || 'Favorite Card'}
+                      title={cardStats.find(card => card.id === customizationData.duelist_favorite)?.name || t('profile.favorite_card')}
                     >
                       <img
                         src={`https://images.ygoprodeck.com/images/cards_cropped/${customizationData.duelist_favorite}.jpg`}
-                        alt={cardStats.find(card => card.id === customizationData.duelist_favorite)?.name || 'Favorite Card'}
+                        alt={cardStats.find(card => card.id === customizationData.duelist_favorite)?.name || t('profile.favorite_card')}
                         className="w-full h-full object-cover"
                         loading="lazy"
                       />
@@ -387,20 +410,20 @@ const Profile2: React.FC = () => {
           <div className={`bg-zinc-800/60 backdrop-blur-sm rounded-xl border border-zinc-700/50 p-6 ${!customizationData?.duelist_bio ? 'lg:col-span-3' : ''}`}>
             <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
               <Icon icon="mdi:chart-line" className="text-green-400" />
-              Performance - {gameMode.toUpperCase()}
+              {t('profile.performance_title')} - {gameMode.toUpperCase()}
             </h2>
             <div className="space-y-4">
               <div>
                 <div className="flex justify-between items-center mb-2">
-                  <span className="text-zinc-400">Rating</span>
+                  <span className="text-zinc-400">{t('profile_page.rating')}</span>
                   <span className="text-2xl font-bold">{Math.floor(currentStats.rating)}</span>
                 </div>
                 <div className="flex justify-between items-center mb-2">
-                  <span className="text-zinc-400">Rank</span>
+                  <span className="text-zinc-400">{t('profile_page.rank')}</span>
                   <span className="text-xl font-bold text-purple-400">{currentTierInfo.name}</span>
                 </div>
                 <div className="flex justify-between items-center mb-2">
-                  <span className="text-zinc-400">Win Rate</span>
+                  <span className="text-zinc-400">{t('statistics.win_rate')}</span>
                   <span className={`text-xl font-bold ${getWinRateColor(winRate)}`}>
                     {winRate.toFixed(1)}%
                   </span>
@@ -410,22 +433,22 @@ const Profile2: React.FC = () => {
                 <div className="grid grid-cols-3 gap-2 text-center">
                   <div>
                     <div className="text-2xl font-bold text-green-400">{currentStats.wins}</div>
-                    <div className="text-xs text-zinc-500">Wins</div>
+                    <div className="text-xs text-zinc-500">{t('statistics.wins')}</div>
                   </div>
                   <div>
                     <div className="text-2xl font-bold text-red-400">{currentStats.losses}</div>
-                    <div className="text-xs text-zinc-500">Losses</div>
+                    <div className="text-xs text-zinc-500">{t('statistics.losses')}</div>
                   </div>
                   <div>
                     <div className="text-2xl font-bold text-yellow-400">{currentStats.draws}</div>
-                    <div className="text-xs text-zinc-500">Draws</div>
+                    <div className="text-xs text-zinc-500">{t('profile_page.draws')}</div>
                   </div>
                 </div>
               </div>
               {currentGameData?.totalGaming && (
                 <div className="pt-4 border-t border-zinc-700">
                   <div className="flex justify-between items-center">
-                    <span className="text-zinc-400">Total Gaming Time</span>
+                    <span className="text-zinc-400">{t('profile_page.total_gaming_time')}</span>
                     <span className="text-lg font-semibold text-blue-400">{currentGameData.totalGaming}</span>
                   </div>
                 </div>
@@ -442,7 +465,7 @@ const Profile2: React.FC = () => {
           <div className="bg-zinc-800/60 backdrop-blur-sm rounded-xl border border-zinc-700/50 p-6">
             <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
               <Icon icon="mdi:cards" className="text-purple-400" />
-              Top 3 Decks
+              {t('profile_page.top_decks')}
             </h2>
             <div className="space-y-3">
               {currentGameData?.mostUsedArchetypes && currentGameData.mostUsedArchetypes.length > 0 ? (
@@ -478,7 +501,7 @@ const Profile2: React.FC = () => {
                 })
               ) : (
                 <div className="text-center py-8 text-zinc-500">
-                  No deck data available for {gameMode.toUpperCase()}
+                  {t('profile_page.no_deck_data', { mode: gameMode.toUpperCase() })}
                 </div>
               )}
             </div>
@@ -488,7 +511,7 @@ const Profile2: React.FC = () => {
           <div className="bg-zinc-800/60 backdrop-blur-sm rounded-xl border border-zinc-700/50 p-6">
             <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
               <Icon icon="mdi:account-group" className="text-red-400" />
-              Top 3 Opponent Decks
+              {t('profile_page.top_opponent_decks')}
             </h2>
             <div className="space-y-3">
               {currentGameData?.opponentDecks && currentGameData.opponentDecks.length > 0 ? (
@@ -524,7 +547,7 @@ const Profile2: React.FC = () => {
                 })
               ) : (
                 <div className="text-center py-8 text-zinc-500">
-                  No opponent data available for {gameMode.toUpperCase()}
+                  {t('profile_page.no_opponent_data', { mode: gameMode.toUpperCase() })}
                 </div>
               )}
             </div>
@@ -535,14 +558,20 @@ const Profile2: React.FC = () => {
         <div className="bg-zinc-800/60 backdrop-blur-sm rounded-xl border border-zinc-700/50 p-6">
           <h2 className="text-xl font-semibold mb-6 flex items-center gap-2">
             <Icon icon="mdi:history" className="text-blue-400" />
-            Match History
+            {t('profile.match_history_title')}
           </h2>
           
           <div>
-            {currentGameData?.matchHistory && currentGameData.matchHistory.length > 0 ? (
+            {loadingStats ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {[1, 2, 3, 4, 5, 6].map(i => (
+                  <div key={i} className="h-64 bg-zinc-800/30 rounded-xl animate-pulse"></div>
+                ))}
+              </div>
+            ) : currentGameData?.matchHistory && currentGameData.matchHistory.length > 0 ? (
               <Suspense fallback={
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {[1, 2, 3].map(i => (
+                  {[1, 2, 3, 4, 5, 6].map(i => (
                     <div key={i} className="h-64 bg-zinc-800/30 rounded-xl animate-pulse"></div>
                   ))}
                 </div>
@@ -561,13 +590,13 @@ const Profile2: React.FC = () => {
             ) : (
               <div className="text-center py-12 text-zinc-500">
                 <Icon icon="mdi:history" className="text-5xl mx-auto mb-3 opacity-50" />
-                <p>No match history available for {gameMode.toUpperCase()}</p>
+                <p>{t('profile_page.no_match_history', { mode: gameMode.toUpperCase() })}</p>
               </div>
             )}
           </div>
 
           {/* Pagination */}
-          {currentGameData?.pagination && currentGameData.pagination.totalPages > 1 && (
+          {currentGameData?.pagination && currentGameData.pagination.totalPages > 0 && (
             <div className="flex justify-center items-center gap-2 mt-6">
               <button
                 onClick={() => setPagination(prev => ({
@@ -580,7 +609,7 @@ const Profile2: React.FC = () => {
                 <Icon icon="mdi:chevron-left" className="text-xl" />
               </button>
               <span className="px-4 py-2 text-sm text-zinc-300">
-                Page {currentGameData.pagination.currentPage} of {currentGameData.pagination.totalPages}
+                {t('profile_page.pagination', { current: currentGameData.pagination.currentPage, total: currentGameData.pagination.totalPages })}
               </span>
               <button
                 onClick={() => setPagination(prev => ({
@@ -599,8 +628,8 @@ const Profile2: React.FC = () => {
         ) : (
           <div className="bg-zinc-800/60 backdrop-blur-sm rounded-xl border border-zinc-700/50 p-12 text-center">
             <Icon icon="mdi:lock" className="text-6xl text-zinc-600 mx-auto mb-4" />
-            <h2 className="text-2xl font-bold text-zinc-300 mb-2">Private Profile</h2>
-            <p className="text-zinc-500">This user has chosen to keep their match history and statistics private.</p>
+            <h2 className="text-2xl font-bold text-zinc-300 mb-2">{t('profile_page.private_title')}</h2>
+            <p className="text-zinc-500">{t('profile_page.private_message')}</p>
           </div>
         )}
       </div>
@@ -608,4 +637,4 @@ const Profile2: React.FC = () => {
   );
 };
 
-export default Profile2;
+export default Profile;

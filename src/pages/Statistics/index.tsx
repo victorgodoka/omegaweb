@@ -87,7 +87,7 @@ const CardsSkeleton = () => (
 );
 
 const Statistics2 = () => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   
   // State
   const [region, setRegion] = useState<number>(33); // 33 = TCG, 17 = Genesys
@@ -212,9 +212,11 @@ const Statistics2 = () => {
   const cardsSide = cache[region]?.cardsSide;
   const currentLoading = isLoading[region];
 
-  // Format date
+  // Format date respecting current language
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleString('pt-BR', {
+    const lang = i18n.language || 'en-US';
+    const locale = lang.startsWith('pt') ? 'pt-BR' : 'en-US';
+    return new Date(dateString).toLocaleString(locale, {
       day: '2-digit',
       month: '2-digit',
       year: 'numeric',
@@ -314,7 +316,7 @@ const Statistics2 = () => {
                 <span className="text-sm font-medium text-purple-400">
                   {summary.lastProcessed?.[0]?.last_processed_at 
                     ? formatDate(summary.lastProcessed[0].last_processed_at)
-                    : 'N/A'}
+                    : t('common.not_available')}
                 </span>
               </div>
               <p className="text-zinc-300 font-medium">{t('statistics2.last_processed')}</p>

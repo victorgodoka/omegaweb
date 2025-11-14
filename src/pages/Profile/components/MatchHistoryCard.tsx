@@ -169,7 +169,7 @@ const MatchHistoryCard: React.FC<MatchHistoryCardProps> = ({ match, formatMatchD
             <div className="flex-1 min-w-0">
               <div className="text-xs text-zinc-500 mb-0.5">Opponent</div>
               <Link
-                to={`/profile2/${match.opponent.id}`}
+                to={`/profile/${match.opponent.id}`}
                 className="font-semibold text-zinc-200 truncate hover:text-blue-400 transition-colors block"
               >
                 {match.opponent.discord.displayname}

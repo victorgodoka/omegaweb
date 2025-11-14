@@ -2,8 +2,10 @@ import React, { useState, useCallback } from 'react';
 import { Icon } from '@iconify/react';
 import { api } from '../../utils/Api';
 import { useCache } from '@/contexts/CacheContext';
+import { useTranslation } from 'react-i18next';
 
 const KonamiDecklistConverter: React.FC = () => {
+  const { t } = useTranslation();
   const [deckName, setDeckName] = useState('Tournament Deck');
   const [ydkFile, setYdkFile] = useState<File | null>(null);
   const [decklistText, setDecklistText] = useState('');
@@ -369,12 +371,10 @@ const KonamiDecklistConverter: React.FC = () => {
         <div className="max-w-4xl mx-auto px-4 py-8">
           <div className="text-center mb-8">
             <h1 className="text-3xl font-bold text-white mb-4">
-              Konami Decklist Converter
+              {t('konami_converter.title')}
             </h1>
             <p className="text-zinc-300 text-lg leading-relaxed max-w-3xl mx-auto">
-              Convert your Yu-Gi-Oh! decklists into the official Konami JSON format required for tournament registration. 
-              This tool transforms standard YDK files or deck codes into the precise format needed for official Konami tournaments, 
-              ensuring your decklist meets all tournament requirements and submission standards.
+              {t('konami_converter.subtitle')}
             </p>
           </div>
         </div>
@@ -386,9 +386,9 @@ const KonamiDecklistConverter: React.FC = () => {
           <div className="p-6 border-b border-zinc-800/50 bg-gradient-to-r from-zinc-800/50 to-zinc-700/30">
             <h2 className="text-lg font-semibold text-white flex items-center">
               <Icon icon="mdi:file-document-edit" className="mr-2 text-purple-400" />
-              Deck Conversion
+              {t('konami_converter.section_title')}
             </h2>
-            <p className="text-sm text-zinc-400 mt-1">Upload your decklist and convert to Konami JSON format</p>
+            <p className="text-sm text-zinc-400 mt-1">{t('konami_converter.section_subtitle')}</p>
           </div>
 
           <div className="p-6 space-y-6">
@@ -396,14 +396,14 @@ const KonamiDecklistConverter: React.FC = () => {
             <div>
               <label className="block text-sm font-medium text-zinc-300 mb-2">
                 <Icon icon="mdi:tag" className="inline mr-1" />
-                Deck Name
+                {t('konami_converter.deck_name_label')}
               </label>
               <input
                 type="text"
                 value={deckName}
                 onChange={(e) => setDeckName(e.target.value)}
                 className="w-full bg-zinc-800 border border-zinc-600 rounded-lg px-3 py-2 text-white placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                placeholder="Enter your deck name for tournament registration"
+                placeholder={t('konami_converter.deck_name_placeholder')}
               />
             </div>
 
@@ -419,7 +419,7 @@ const KonamiDecklistConverter: React.FC = () => {
                   }`}
                 >
                   <Icon icon="mdi:file-upload" className="inline mr-2" />
-                  YDK File Upload
+                  {t('konami_converter.tab_ydk')}
                 </button>
                 <button
                   onClick={() => setActiveTab('text')}
@@ -430,7 +430,7 @@ const KonamiDecklistConverter: React.FC = () => {
                   }`}
                 >
                   <Icon icon="mdi:text-box" className="inline mr-2" />
-                  Deck Code / Text
+                  {t('konami_converter.tab_text')}
                 </button>
               </div>
 
@@ -454,10 +454,10 @@ const KonamiDecklistConverter: React.FC = () => {
                       </div>
                       <div>
                         <p className="text-white font-medium">
-                          {ydkFile ? ydkFile.name : 'Choose YDK File'}
+                          {ydkFile ? ydkFile.name : t('konami_converter.ydk_button_default')}
                         </p>
                         <p className="text-zinc-400 text-sm mt-1">
-                          Select a .ydk file from your deck builder
+                          {t('konami_converter.ydk_help')}
                         </p>
                       </div>
                     </label>
@@ -471,7 +471,7 @@ const KonamiDecklistConverter: React.FC = () => {
                   <textarea
                     value={decklistText}
                     onChange={(e) => handleTextInputChange(e.target.value)}
-                    placeholder="Paste your Omega Deck code or YDKE URL here"
+                    placeholder={t('konami_converter.text_placeholder')}
                     className="w-full h-20 bg-zinc-800 border border-zinc-600 rounded-lg px-3 py-2 text-white placeholder-zinc-400 resize-none focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent scrollbar-thin"
                   />
                 </div>
@@ -492,12 +492,12 @@ const KonamiDecklistConverter: React.FC = () => {
                 {isProcessing ? (
                   <>
                     <Icon icon="mdi:loading" className="text-lg animate-spin" />
-                    Processing...
+                    {t('konami_converter.processing')}
                   </>
                 ) : (
                   <>
                     <Icon icon="mdi:download" className="text-lg" />
-                    Convert & Download JSON
+                    {t('konami_converter.button_convert')}
                   </>
                 )}
               </button>
