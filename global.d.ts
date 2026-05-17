@@ -145,3 +145,36 @@ declare type UserActions = | { type: 'SET_USER', payload: User } | { type: 'LOGO
 
 // Moment.js locale declarations
 declare module 'moment/locale/pt-br';
+
+declare interface AllDecksApiResponse {
+  success: boolean;
+  data: AllDecksApi[];
+  pagination: AllDecksPagination;
+  filters: AllDecksFilters;
+}
+
+declare interface AllDecksApi {
+  id: number;
+  user_id: string;
+  code: string;
+  name: string;
+  cover_id: number | null;
+  archetypes: string[];
+  tags: string[];
+  private: boolean;
+  likes: number;
+  comment_count: number;
+  created_at: string;
+  updated_at: string;
+}
+
+declare interface AllDecksPagination {
+  page: number;
+  limit: number;
+  total: number;
+  totalPages: number;
+}
+
+declare interface AllDecksFilters {
+  availableArchetypes: string[];
+}

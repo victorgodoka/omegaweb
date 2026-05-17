@@ -18,20 +18,26 @@ export interface Login {
 interface UniqueLoginsStatsProps {
   logins: Login[];
   total: number;
+  initialRankData?: RegionData[] | null;
 }
 
-const UniqueLoginsStats = ({ logins }: UniqueLoginsStatsProps) => {
+const UniqueLoginsStats = ({ logins, initialRankData }: UniqueLoginsStatsProps) => {
   const { t, i18n } = useTranslation();
-  const locale = (i18n.language || 'en-US').startsWith('pt') ? 'pt-BR' : 'en-US';
+  const locale = i18n.language || 'en-US';
 
   function formatDate(date: string) {
     return new Date(date).toLocaleDateString(locale, { month: "short", day: "numeric" });
   }
   const [loginsPeriod, setLoginsPeriod] = useState<7 | 15 | 30>(7);
-  const [rankData, setRankData] = useState<RegionData[]>([]);
+  const [rankData, setRankData] = useState<RegionData[]>(initialRankData ?? []);
 
-  // Buscar dados de rank distribution
+  // Fetch rank distribution only if not provided via props
   useEffect(() => {
+    if (initialRankData && initialRankData.length > 0) {
+      setRankData(initialRankData);
+      return;
+    }
+    
     let mounted = true;
     api.main.getRankDistribution()
       .then((res) => {
@@ -45,7 +51,7 @@ const UniqueLoginsStats = ({ logins }: UniqueLoginsStatsProps) => {
       })
       .catch((err) => console.error('Rank Distribution Error:', err));
     return () => { mounted = false; };
-  }, []);
+  }, [initialRankData]);
 
   const loginStats = useMemo(() => {
     if (logins.length === 0) return null;
@@ -116,85 +122,84 @@ const UniqueLoginsStats = ({ logins }: UniqueLoginsStatsProps) => {
       {/* Header com seletor de período */}
       <div className="w-full flex items-center justify-between mb-4">
         <div className="flex items-center gap-2">
-          <Icon icon="mdi:account-multiple" className="w-6 h-6 text-cyan-400" />
-          <h2 className="text-2xl font-bold text-white">{t('statistics2.unique_logins')}</h2>
+          <Icon icon="mdi:account-multiple" className="w-6 h-6 text-gray-400" />
+          <h2 className="text-2xl font-bold text-white">{t('statistics.unique_logins')}</h2>
         </div>
         <div className="flex gap-2">
-          <button onClick={() => setLoginsPeriod(7)} className={`px-3 py-1 text-sm rounded ${loginsPeriod === 7 ? 'bg-cyan-500 text-white' : 'bg-zinc-700 text-zinc-300'}`}>{t('statistics2.days_7')}</button>
-          <button onClick={() => setLoginsPeriod(15)} className={`px-3 py-1 text-sm rounded ${loginsPeriod === 15 ? 'bg-cyan-500 text-white' : 'bg-zinc-700 text-zinc-300'}`}>{t('statistics2.days_15')}</button>
-          <button onClick={() => setLoginsPeriod(30)} className={`px-3 py-1 text-sm rounded ${loginsPeriod === 30 ? 'bg-cyan-500 text-white' : 'bg-zinc-700 text-zinc-300'}`}>{t('statistics2.days_30')}</button>
+          <button onClick={() => setLoginsPeriod(7)} className={`px-3 py-1 text-sm rounded-lg transition-colors ${loginsPeriod === 7 ? 'bg-white text-black font-semibold' : 'bg-zinc-800 text-gray-400 hover:bg-zinc-700'}`}>{t('statistics.days_7')}</button>
+          <button onClick={() => setLoginsPeriod(15)} className={`px-3 py-1 text-sm rounded-lg transition-colors ${loginsPeriod === 15 ? 'bg-white text-black font-semibold' : 'bg-zinc-800 text-gray-400 hover:bg-zinc-700'}`}>{t('statistics.days_15')}</button>
+          <button onClick={() => setLoginsPeriod(30)} className={`px-3 py-1 text-sm rounded-lg transition-colors ${loginsPeriod === 30 ? 'bg-white text-black font-semibold' : 'bg-zinc-800 text-gray-400 hover:bg-zinc-700'}`}>{t('statistics.days_30')}</button>
         </div>
       </div>
 
       {/* Cards de estatísticas */}
       <div className="w-full grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-        <div className="bg-gradient-to-br from-cyan-500/10 to-cyan-600/5 border border-cyan-500/30 rounded-lg p-4">
+        <div className="bg-zinc-900/50 border border-cyan-500/20 rounded-lg p-4">
           <div className="flex items-center justify-between mb-2">
-            <Icon icon="mdi:calendar-today" className="w-6 h-6 text-cyan-400" />
-            <div className={`text-sm font-bold ${loginStats.yesterdayChange >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+            <Icon icon="mdi:calendar-today" className="w-5 h-5 text-cyan-400" />
+            <div className={`text-xs font-semibold px-2 py-0.5 rounded ${loginStats.yesterdayChange >= 0 ? 'bg-green-500/10 text-green-400' : 'bg-red-500/10 text-red-400'}`}>
               {loginStats.yesterdayChange >= 0 ? '+' : ''}{loginStats.yesterdayChange.toFixed(1)}%
             </div>
           </div>
           <div className="text-3xl font-bold text-cyan-400 mb-1">{loginStats.yesterday.toLocaleString()}</div>
-          <div className="text-zinc-400 text-sm">{t('statistics2.yesterday')}</div>
-          <div className="text-zinc-500 text-xs">{t('statistics2.vs_previous_day')}</div>
+          <div className="text-gray-400 text-sm">{t('statistics.yesterday')}</div>
+          <div className="text-gray-500 text-xs">{t('statistics.vs_previous_day')}</div>
         </div>
 
-        <div className="bg-gradient-to-br from-blue-500/10 to-blue-600/5 border border-blue-500/30 rounded-lg p-4">
+        <div className="bg-zinc-900/50 border border-blue-500/20 rounded-lg p-4">
           <div className="flex items-center justify-between mb-2">
-            <Icon icon="mdi:calendar-week" className="w-6 h-6 text-blue-400" />
-            <div className={`text-sm font-bold ${loginStats.week7Change >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+            <Icon icon="mdi:calendar-week" className="w-5 h-5 text-blue-400" />
+            <div className={`text-xs font-semibold px-2 py-0.5 rounded ${loginStats.week7Change >= 0 ? 'bg-green-500/10 text-green-400' : 'bg-red-500/10 text-red-400'}`}>
               {loginStats.week7Change >= 0 ? '+' : ''}{loginStats.week7Change.toFixed(1)}%
             </div>
           </div>
           <div className="text-3xl font-bold text-blue-400 mb-1">{Math.round(loginStats.avg7Days).toLocaleString()}</div>
-          <div className="text-zinc-400 text-sm">{t('statistics2.avg_7_days')}</div>
-          <div className="text-zinc-500 text-xs">{t('statistics2.vs_previous_week')}</div>
+          <div className="text-gray-400 text-sm">{t('statistics.avg_7_days')}</div>
+          <div className="text-gray-500 text-xs">{t('statistics.vs_previous_week')}</div>
         </div>
 
-        <div className="bg-gradient-to-br from-purple-500/10 to-purple-600/5 border border-purple-500/30 rounded-lg p-4">
+        <div className="bg-zinc-900/50 border border-purple-500/20 rounded-lg p-4">
           <div className="flex items-center justify-between mb-2">
-            <Icon icon="mdi:calendar-month" className="w-6 h-6 text-purple-400" />
-            <div className={`text-sm font-bold ${loginStats.month30Change >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+            <Icon icon="mdi:calendar-month" className="w-5 h-5 text-purple-400" />
+            <div className={`text-xs font-semibold px-2 py-0.5 rounded ${loginStats.month30Change >= 0 ? 'bg-green-500/10 text-green-400' : 'bg-red-500/10 text-red-400'}`}>
               {loginStats.month30Change >= 0 ? '+' : ''}{loginStats.month30Change.toFixed(1)}%
             </div>
           </div>
           <div className="text-3xl font-bold text-purple-400 mb-1">{Math.round(loginStats.avg30Days).toLocaleString()}</div>
-          <div className="text-zinc-400 text-sm">{t('statistics2.avg_30_days')}</div>
-          <div className="text-zinc-500 text-xs">{t('statistics2.vs_previous_month')}</div>
+          <div className="text-gray-400 text-sm">{t('statistics.avg_30_days')}</div>
+          <div className="text-gray-500 text-xs">{t('statistics.vs_previous_month')}</div>
         </div>
 
-        <div className="bg-gradient-to-br from-green-500/10 to-green-600/5 border border-green-500/30 rounded-lg p-4">
+        <div className="bg-zinc-900/50 border border-green-500/20 rounded-lg p-4">
           <div className="flex items-center justify-between mb-2">
-            <Icon icon="mdi:star" className="w-6 h-6 text-green-400" />
+            <Icon icon="mdi:star" className="w-5 h-5 text-green-400" />
           </div>
           <div className="text-2xl font-bold text-green-400 mb-1 capitalize">{loginStats.maxDay}</div>
-          <div className="text-zinc-400 text-sm">{t('statistics2.most_logins_day')}</div>
-          <div className="text-zinc-500 text-xs">{t('statistics2.avg_logins', { count: Math.round(loginStats.maxAvg) })}</div>
+          <div className="text-gray-400 text-sm">{t('statistics.most_logins_day')}</div>
+          <div className="text-gray-500 text-xs">{t('statistics.avg_logins', { count: Math.round(loginStats.maxAvg) })}</div>
         </div>
       </div>
 
       {/* Gráfico de linha com MUI */}
-      <div className="w-full bg-zinc-800 rounded-2xl shadow-xl p-6">
+      <div className="w-full bg-zinc-900/50 border border-zinc-800 rounded-lg p-6">
         <LineChart
           xAxis={[{ data: chartData.map(l => formatDate(l.LogDate)), scaleType: 'point', label: t('date') }]}
           series={[{
             data: chartData.map(l => l.LogCount),
-            color: '#06b6d4',
-            label: t('statistics2.unique_logins'),
+            color: '#6b7280',
+            label: t('statistics.unique_logins'),
             showMark: true,
             area: true,
             curve: 'monotoneX',
           }]}
           height={400}
           sx={{
-            backgroundColor: '#18181b',
-            borderRadius: 12,
-            '.MuiChartsAxis-root .MuiChartsAxis-tickLabel': { fill: '#a1a1aa', fontSize: 10 },
-            '.MuiChartsAxis-root .MuiChartsAxis-label': { fill: '#a1a1aa' },
-            '.MuiLineElement-root': { strokeWidth: 3 },
-            '.MuiMarkElement-root': { stroke: '#06b6d4', fill: '#06b6d4' },
-            '.MuiAreaElement-root': { fill: 'rgba(6,182,212,0.2)' },
+            backgroundColor: 'transparent',
+            '.MuiChartsAxis-root .MuiChartsAxis-tickLabel': { fill: '#9ca3af', fontSize: 10 },
+            '.MuiChartsAxis-root .MuiChartsAxis-label': { fill: '#9ca3af' },
+            '.MuiLineElement-root': { strokeWidth: 2 },
+            '.MuiMarkElement-root': { stroke: '#6b7280', fill: '#6b7280' },
+            '.MuiAreaElement-root': { fill: 'rgba(107,114,128,0.1)' },
           }}
           grid={{ horizontal: true }}
           margin={{ top: 16, right: 16, left: 16, bottom: 24 }}

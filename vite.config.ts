@@ -2,19 +2,16 @@ import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react-swc'
 import tailwindcss from '@tailwindcss/vite'
 import path from 'path';
-import flowbiteReact from "flowbite-react/plugin/vite";
 
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [
     react(),
     tailwindcss(),
-    flowbiteReact()
   ],
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),
-      '@/ui': path.resolve(__dirname, './ui'),
       buffer: 'buffer'
     }
   },
@@ -32,12 +29,11 @@ export default defineConfig({
           
           // UI libraries - split further
           'vendor-mui': ['@mui/material', '@mui/x-charts'],
-          'vendor-flowbite': ['flowbite-react'],
           'vendor-material-tailwind': ['@material-tailwind/react'],
           
           // Utility libraries
           'vendor-charts': ['recharts'],
-          'vendor-utils': ['moment', 'idb', 'react-toastify'],
+          'vendor-utils': ['react-toastify'],
           'vendor-icons': ['@iconify/react'],
           'vendor-editor': ['quill'],
           
@@ -58,10 +54,6 @@ export default defineConfig({
       },
       // Fix external dependencies in production
       external: [],
-      // Ensure proper module resolution
-      treeshake: {
-        moduleSideEffects: false
-      }
     },
     // Optimize chunk size
     chunkSizeWarningLimit: 1000,
@@ -97,8 +89,6 @@ export default defineConfig({
       'buffer'
     ],
     exclude: ['@iconify/react', '@emotion/react', '@emotion/styled'],
-    // Force re-bundling of problematic dependencies
-    force: true
   },
   // Performance optimizations
   server: {

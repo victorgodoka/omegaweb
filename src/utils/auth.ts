@@ -31,8 +31,8 @@ export class AuthManager {
   static async login(userId: string): Promise<LoginResponse> {
     try {
       const response = await api.main.post('auth/login', { userId });
-
-      if (response.ok && response.success && response.data?.token) {
+      console.log(response);
+      if (response.ok && response.success && response.data.token) {
         this.setToken(response.data.token);
         this.setUserId(userId);
         return {

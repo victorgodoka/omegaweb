@@ -89,7 +89,7 @@ const Toast: React.FC<ToastProps> = ({
   };
 
   const getPositionStyles = () => {
-    const baseStyles = 'fixed z-50 max-w-sm w-full mx-4';
+    const baseStyles = 'fixed z-100 max-w-sm w-full mx-4';
     
     switch (position) {
       case 'top-left':
@@ -133,7 +133,7 @@ const Toast: React.FC<ToastProps> = ({
         <div className="flex items-start gap-3">
           <Icon 
             icon={typeStyles.icon} 
-            className={`${typeStyles.text} text-lg flex-shrink-0 mt-0.5`} 
+            className={`${typeStyles.text} text-lg shrink-0 mt-0.5`} 
           />
           
           <div className="flex-1 min-w-0">
@@ -166,7 +166,7 @@ const Toast: React.FC<ToastProps> = ({
           
           <button
             onClick={handleClose}
-            className="text-zinc-400 hover:text-zinc-200 transition-colors flex-shrink-0 ml-2"
+            className="text-zinc-400 hover:text-zinc-200 transition-colors shrink-0 ml-2"
           >
             <Icon icon="mdi:close" className="text-lg" />
           </button>

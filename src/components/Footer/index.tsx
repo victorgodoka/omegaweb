@@ -1,7 +1,7 @@
-import moment from "moment";
 import { Icon } from "@iconify/react";
 
 const FooterContainer = () => {
+  const year = new Date().getFullYear();
   return (
     <footer className="w-full bg-zinc-900 border-t border-zinc-800 py-4 px-4 mt-8">
       <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between">
@@ -10,7 +10,7 @@ const FooterContainer = () => {
             Duelists Unite
           </a>
           <span className="mx-2">©</span>
-          <span>{moment().format('YYYY')}</span>
+          <span>{year}</span>
         </div>
         <div className="flex space-x-2 text-white text-xl">
           <a className="hover:bg-orange-500 w-10 h-10 flex items-center justify-center rounded-full transition-colors" href="https://discord.gg/duelistsunite" target="_blank" rel="noopener noreferrer">

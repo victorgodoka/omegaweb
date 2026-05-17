@@ -74,12 +74,15 @@ const Discord = () => {
         setLoadingState('authenticating');
         
         const discordResponse = await api.external.discord.getUser(accessToken, tokenType);
-        console.log(discordResponse)
         if (!discordResponse.ok) {
           throw new Error('Failed to fetch Discord user data.');
         }
 
         const discordData = discordResponse.data;
+        if (!discordData) { 
+          throw new Error('No Discord user data received.');
+        }
+
         setLoadingState('fetching-profile');
 
         const playerResponse = await api.external.duelistsUnite.getPlayer(discordData.id);
@@ -87,17 +90,15 @@ const Discord = () => {
           throw new Error('Failed to fetch user profile data.');
         }
 
-        const playerData = playerResponse.data;
-        // Check if we have valid player data with the new response format
-        const profile = playerData?.success && playerData?.id ? playerData : null;
+        const profile = playerResponse.data?.data || null;
 
         dispatch({
           type: 'SET_USER',
           payload: {
             id: discordData.id,
             username: discordData.username,
-            displayname: discordData.global_name || discordData.username,
-            avatar: profile?.avatar || discordData.avatar,
+            displayname: profile?.displayname || discordData.global_name || discordData.username,
+            avatar: profile?.avatar || discordData.avatar || '',
             profile,
           },
         });
@@ -107,6 +108,7 @@ const Discord = () => {
         // Generate JWT token using Discord ID as user ID
         try {
           const jwtResponse = await AuthManager.login(discordData.id);
+          console.log(jwtResponse);
           if (!jwtResponse.success) {
             console.warn('JWT token generation failed:', jwtResponse.message);
             // Continue without JWT token - user can still use Discord features
@@ -230,7 +232,7 @@ const Discord = () => {
   };
 
   return (
-    <div className="fixed inset-0 bg-gradient-to-br from-indigo-900/50 via-purple-900/50 to-pink-900/50 flex flex-col items-center justify-center z-50">
+    <div className="fixed inset-0 bg-linear-to-br from-indigo-900/50 via-purple-900/50 to-pink-900/50 flex flex-col items-center justify-center z-100">
       {/* Background Pattern */}
       <div className="absolute inset-0 bg-black/50"></div>
       

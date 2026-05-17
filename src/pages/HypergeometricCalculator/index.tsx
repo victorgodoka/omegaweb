@@ -3,9 +3,11 @@ import { Icon } from '@iconify/react';
 import { api } from '@/utils/Api';
 import { AuthManager } from '@/utils/auth';
 import { useToast } from '@/contexts/ToastContext';
-import type { ConvertData, Cards } from '../PDFGenerator/types';
 import type { CardGroup, CalculatorState, ProbabilityResult } from './types';
 import { useTranslation } from 'react-i18next';
+import { useCardsSearch } from '@/contexts/CardsSearchContext';
+import type { CategorizedDeck } from '@/utils/ApiTypes';
+import { groupCardsByQuantity, isExtraDeckCard, type CardWithQuantity } from '@/utils/Functions';
 
 // Lazy load heavy components
 const CardSelector = lazy(() => import('./components/CardSelector'));
@@ -14,6 +16,7 @@ const HypergeometricModal = lazy(() => import('./components/HypergeometricModal'
 
 const HypergeometricCalculator: React.FC = () => {
   const { showSuccess, showError, showWarning } = useToast();
+  const { searchCards } = useCardsSearch();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const { t } = useTranslation();
 
@@ -27,20 +30,30 @@ const HypergeometricCalculator: React.FC = () => {
     results: null,
     shareableId: null,
     isSharing: false,
-    autoCalculate: false
+    autoCalculate: false,
+    cards: []
   });
 
-  // Convert ConvertData to a flat card list for easier manipulation
+  // Convert CategorizedDeck to a flat card list for easier manipulation
   const allCards = useMemo(() => {
-    if (!state.deckData) return [];
+    if (!state.deckData || !state.cards || !state.cards.length) return [];
+    const { deckData, cards } = state;
 
-    const cards: (Cards & { location: 'main' | 'extra' | 'side' })[] = [
-      ...state.deckData.mainDeck.map((card: Cards) => ({ ...card, location: 'main' as const })),
-      ...state.deckData.extraDeck.map((card: Cards) => ({ ...card, location: 'extra' as const })),
-      ...state.deckData.sideDeck.map((card: Cards) => ({ ...card, location: 'side' as const }))
+    const deckCards: (CardWithQuantity & {
+      location: "main" | "extra" | "side";
+    })[] = [
+      ...groupCardsByQuantity(
+        deckData.fullDeck.main.map(
+          (id: number) =>
+            cards.find((c) => c.canonicalId === id || c.id === id)!
+        )
+      ).map((card: CardWithQuantity) => ({
+        ...card,
+        location: (isExtraDeckCard(card) ? "extra" : "main") as "main" | "extra",
+      })),
     ];
 
-    return cards;
+    return deckCards;
   }, [state.deckData]);
 
   // Get main deck cards only (for probability calculations)
@@ -50,7 +63,7 @@ const HypergeometricCalculator: React.FC = () => {
 
   // Calculate total deck size
   const deckSize = useMemo(() => {
-    return mainDeckCards.reduce((total, card) => total + card.qtd, 0);
+    return mainDeckCards.reduce((total, card) => total + card.qty, 0);
   }, [mainDeckCards]);
 
   // Validate deck code and fetch deck data
@@ -72,13 +85,19 @@ const HypergeometricCalculator: React.FC = () => {
       const response = await api.main.get(`convert?code=${encodedCode}`);
 
       if (response.ok && response.data && response.success) {
+        const cards = await searchCards({
+          method: "POST",
+          id: response.data.data.uniqueCards,
+        });
+
         setState((prev: CalculatorState) => ({
           ...prev,
           isDeckValid: true,
-          deckData: response.data as ConvertData,
+          deckData: response.data.data as CategorizedDeck,
           isLoading: false,
           targetCards: [],
-          results: null
+          results: null,
+          cards
         }));
       } else {
         showError(t('calculator.invalid_deck_code'));
@@ -512,14 +531,14 @@ const HypergeometricCalculator: React.FC = () => {
   }, []);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-zinc-900 via-zinc-800 to-zinc-900 py-24 px-12">
-      <div className="grid grid-cols-1 gap-6">
+    <div className="min-h-screen w-full flex justify-center px-4 py-16">
+      <div className="w-full max-w-7xl grid grid-cols-1 gap-6">
         {/* Left Column - Deck Input & Settings */}
-        <div className="gap-6 flex">
+        <div className="gap-4 flex flex-col lg:flex-row">
           {/* Deck Code Input */}
-          <div className="bg-zinc-800 flex-1 rounded-lg border border-zinc-700 p-6">
-            <h2 className="text-xl font-semibold text-zinc-200 mb-4 flex items-center gap-2">
-              <Icon icon="mdi:code-braces" className="text-blue-400" />
+          <div className="bg-zinc-900/60 w-full rounded-lg border border-zinc-800 p-6">
+            <h2 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+              <Icon icon="mdi:code-braces" className="text-zinc-400" />
               {t('calculator.deck_code')}
             </h2>
 
@@ -527,32 +546,27 @@ const HypergeometricCalculator: React.FC = () => {
               <div className="flex justify-between gap-4">
                 <input
                 value={state.deckCode}
-                onChange={(e) => handleDeckCodeChange(e.target.value)}
-                placeholder={t('calculator.deck_code_placeholder')}
-                className="w-full px-3 py-2 bg-zinc-700 border border-zinc-600 rounded-lg text-white placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
-              />
+                  onChange={(e) => handleDeckCodeChange(e.target.value)}
+                  placeholder={t('calculator.deck_code_placeholder')}
+                  className="w-full px-3 py-2 bg-zinc-900 border border-zinc-800 rounded-md text-zinc-100 placeholder-zinc-500 focus:outline-none focus:border-zinc-500"
+                />
 
-
-              <button
-                onClick={() => validateDeckCode(state.deckCode)}
-                disabled={state.isLoading || !state.deckCode.trim()}
-                className="px-4 py-2 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
-              >
-                {state.isLoading ? (
-                  <>
-                    <Icon icon="mdi:loading" className="animate-spin" />
-                  </>
-                ) : (
-                  <>
-                    <Icon icon="mdi:check-circle" />
-                  </>
-                )}
-              </button>
+                <button
+                  onClick={() => validateDeckCode(state.deckCode)}
+                  disabled={state.isLoading || !state.deckCode.trim()}
+                  className="px-4 py-2 bg-white text-black font-medium rounded-md border border-zinc-300 hover:bg-zinc-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
+                >
+                  {state.isLoading ? (
+                    <Icon icon="mdi:loading" className="animate-spin text-zinc-700" />
+                  ) : (
+                    <Icon icon="mdi:check-circle" className="text-zinc-700" />
+                  )}
+                </button>
               </div>
 
               {state.isDeckValid && (
-                <div className="flex items-center gap-2 text-green-400 text-sm">
-                  <Icon icon="mdi:check-circle" />
+                <div className="flex items-center gap-2 text-emerald-400 text-sm">
+                  <Icon icon="mdi:check-circle" className="text-emerald-400" />
                   {t('calculator.deck_loaded', { deckSize })}
                 </div>
               )}
@@ -561,9 +575,9 @@ const HypergeometricCalculator: React.FC = () => {
 
           {/* Hand Size Setting */}
           {state.isDeckValid && (
-            <div className="bg-zinc-800 rounded-lg border border-zinc-700 p-6">
-              <h2 className="text-xl font-semibold text-zinc-200 mb-4 flex items-center gap-2">
-                <Icon icon="mdi:hand" className="text-orange-400" />
+            <div className="bg-zinc-900/60 rounded-lg border border-zinc-800 p-6 w-full lg:w-72">
+              <h2 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+                <Icon icon="mdi:hand" className="text-zinc-400" />
                 {t('calculator.sample_size')}
               </h2>
 
@@ -578,7 +592,7 @@ const HypergeometricCalculator: React.FC = () => {
                     max="20"
                     value={state.handSize}
                     onChange={(e) => handleHandSizeChange(parseInt(e.target.value) || 5)}
-                    className="w-full px-3 py-2 bg-zinc-700 border border-zinc-600 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent"
+                    className="w-full px-3 py-2 bg-zinc-900 border border-zinc-800 rounded-md text-zinc-100 focus:outline-none focus:border-zinc-500"
                   />
                 </div>
               </div>
@@ -589,7 +603,17 @@ const HypergeometricCalculator: React.FC = () => {
         {/* Middle Column - Card Selection */}
         <div className="">
           {state.isDeckValid && (
-            <Suspense fallback={<div className="bg-zinc-800 rounded-lg border border-zinc-700 p-6 animate-pulse h-64"><div className="h-4 bg-zinc-700 rounded w-1/4 mb-4"></div><div className="space-y-2"><div className="h-3 bg-zinc-700 rounded"></div><div className="h-3 bg-zinc-700 rounded w-5/6"></div></div></div>}>
+            <Suspense
+              fallback={
+                <div className="bg-zinc-900/60 rounded-lg border border-zinc-800 p-6 animate-pulse h-64">
+                  <div className="h-4 bg-zinc-800 rounded w-1/4 mb-4" />
+                  <div className="space-y-2">
+                    <div className="h-3 bg-zinc-800 rounded" />
+                    <div className="h-3 bg-zinc-800 rounded w-5/6" />
+                  </div>
+                </div>
+              }
+            >
               <CardSelector
                 cards={mainDeckCards}
                 targetCards={state.targetCards}
@@ -605,19 +629,19 @@ const HypergeometricCalculator: React.FC = () => {
         <div className="">
           {state.isDeckValid && (
             <div className="space-y-6">
-              <div className="bg-zinc-800 rounded-lg border border-zinc-700 p-6 mb-4">
+              <div className="bg-zinc-900/60 rounded-lg border border-zinc-800 p-6 mb-4">
                 <div className="flex flex-wrap items-center justify-between gap-4 mb-4">
-                  <h2 className="text-xl font-semibold text-zinc-200 flex items-center gap-2">
-                    <Icon icon="mdi:chart-line" className="text-green-400" />
+                  <h2 className="text-lg font-semibold text-white flex items-center gap-2">
+                    <Icon icon="mdi:chart-line" className="text-zinc-400" />
                     {t('calculator.probability_results')}
                   </h2>
                   <div className="flex gap-2">
                     <button
                       onClick={calculateProbabilities}
                       disabled={state.targetCards.length === 0}
-                      className="px-4 py-2 bg-green-600 text-white font-medium rounded-lg hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-2"
+                      className="px-4 py-2 bg-white text-black font-medium rounded-md border border-zinc-300 hover:bg-zinc-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-2"
                     >
-                      <Icon icon="mdi:calculator" />
+                      <Icon icon="mdi:calculator" className="text-zinc-700" />
                       {t('calculator.calculate')}
                     </button>
                     
@@ -625,13 +649,13 @@ const HypergeometricCalculator: React.FC = () => {
                     <button
                       onClick={createShareableLink}
                       disabled={!state.isDeckValid || state.targetCards.length === 0 || state.isSharing}
-                      className="px-4 py-2 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-2"
+                      className="px-4 py-2 bg-zinc-900 text-zinc-100 font-medium rounded-md border border-zinc-700 hover:border-zinc-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-2"
                       title={t('calculator.create_share_title')}
                     >
                       {state.isSharing ? (
-                        <Icon icon="mdi:loading" className="animate-spin" />
+                        <Icon icon="mdi:loading" className="animate-spin text-zinc-400" />
                       ) : (
-                        <Icon icon="mdi:share-variant" />
+                        <Icon icon="mdi:share-variant" className="text-zinc-300" />
                       )}
                       {t('calculator.share.button')}
                     </button>
@@ -639,7 +663,15 @@ const HypergeometricCalculator: React.FC = () => {
                 </div>
 
                 {state.results && (
-                  <Suspense fallback={<div className="bg-zinc-700/30 rounded-lg p-4 animate-pulse h-32"><div className="h-4 bg-zinc-600 rounded w-1/3 mb-2"></div><div className="h-3 bg-zinc-600 rounded w-full mb-1"></div><div className="h-3 bg-zinc-600 rounded w-2/3"></div></div>}>
+                  <Suspense
+                    fallback={
+                      <div className="bg-zinc-900/60 rounded-lg p-4 animate-pulse h-32 border border-zinc-800">
+                        <div className="h-4 bg-zinc-800 rounded w-1/3 mb-2" />
+                        <div className="h-3 bg-zinc-800 rounded w-full mb-1" />
+                        <div className="h-3 bg-zinc-800 rounded w-2/3" />
+                      </div>
+                    }
+                  >
                     <ProbabilityResults
                       results={state.results}
                       handSize={state.handSize}
@@ -648,9 +680,9 @@ const HypergeometricCalculator: React.FC = () => {
                 )}
 
                 {state.targetCards.length === 0 && (
-                  <div className="text-center py-8 text-zinc-400">
-                    <Icon icon="mdi:target" className="text-4xl mb-2 mx-auto" />
-                    <p>{t('calculator.add_target_cards_prompt')}</p>
+                  <div className="text-center py-8 text-zinc-500">
+                    <Icon icon="mdi:target" className="text-3xl mb-2 mx-auto text-zinc-400" />
+                    <p className="text-sm">{t('calculator.add_target_cards_prompt')}</p>
                   </div>
                 )}
                 
@@ -658,21 +690,21 @@ const HypergeometricCalculator: React.FC = () => {
                 
                 {/* Share Success */}
                 {state.shareableId && (
-                  <div className="mt-4 p-4 bg-green-900/50 border border-green-500/50 rounded-lg">
+                  <div className="mt-4 p-4 bg-zinc-900/60 border border-zinc-700 rounded-lg">
                     <div className="flex items-center justify-between mb-2">
-                      <p className="text-green-400 text-sm font-medium flex items-center gap-2">
-                        <Icon icon="mdi:check-circle" />
+                      <p className="text-emerald-400 text-sm font-medium flex items-center gap-2">
+                        <Icon icon="mdi:check-circle" className="text-emerald-400" />
                         {t('calculator.share.created')}
                       </p>
                       <button
                         onClick={copyShareLink}
-                        className="px-3 py-1 bg-green-600 text-white text-xs rounded hover:bg-green-700 transition-colors flex items-center gap-1"
+                        className="px-3 py-1 bg-white text-black text-xs rounded-md border border-zinc-300 hover:bg-zinc-100 transition-colors flex items-center gap-1"
                       >
-                        <Icon icon="mdi:content-copy" />
+                        <Icon icon="mdi:content-copy" className="text-zinc-700" />
                         {t('calculator.copy_link')}
                       </button>
                     </div>
-                    <p className="text-green-300 text-xs break-all">
+                    <p className="text-zinc-300 text-xs break-all">
                       {`${window.location.origin}/calculator?share=${state.shareableId}`}
                     </p>
                   </div>
@@ -683,22 +715,22 @@ const HypergeometricCalculator: React.FC = () => {
         </div>
       </div>
 
-      {/* Floating Action Button - Help */}
+      {/* Floating Help Button */}
       <div className="fixed bottom-6 left-6 z-40">
         <div className="group relative">
           <button
             onClick={handleOpenModal}
-            className="w-14 h-14 bg-blue-600 hover:bg-blue-700 text-white rounded-full shadow-lg hover:shadow-xl transition-all duration-300 flex items-center justify-center group-hover:scale-110"
+            className="w-11 h-11 bg-zinc-900 border border-zinc-800 hover:border-zinc-500 text-zinc-200 rounded-md flex items-center justify-center transition-colors"
             aria-label={t('calculator.help.aria_label')}
           >
-            <Icon icon="mdi:help-circle" className="text-2xl" />
+            <Icon icon="mdi:help-circle" className="text-xl text-zinc-300" />
           </button>
-          
+
           {/* Tooltip */}
-          <div className="absolute left-16 top-1/2 transform -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none">
-            <div className="bg-zinc-800 text-zinc-200 text-sm px-3 py-2 rounded-lg shadow-lg border border-zinc-700 whitespace-nowrap">
+          <div className="absolute left-14 top-1/2 transform -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none">
+            <div className="bg-zinc-900 text-zinc-200 text-xs px-3 py-2 rounded-md border border-zinc-800 whitespace-nowrap">
               {t('calculator.help.tooltip')}
-              <div className="absolute left-0 top-1/2 transform -translate-y-1/2 -translate-x-1 w-2 h-2 bg-zinc-800 border-l border-b border-zinc-700 rotate-45"></div>
+              <div className="absolute left-0 top-1/2 transform -translate-y-1/2 -translate-x-1 w-2 h-2 bg-zinc-900 border-l border-b border-zinc-800 rotate-45" />
             </div>
           </div>
         </div>

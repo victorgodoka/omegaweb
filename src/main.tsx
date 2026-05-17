@@ -2,9 +2,7 @@ import { createRoot } from "react-dom/client";
 import { ThemeProvider } from "@material-tailwind/react";
 import "./styles.css";
 import i18n from "./i18n";
-import Loading from "@/ui/Loading";
 import { router } from "./router";
-import { Suspense } from "react";
 import { RouterProvider } from "react-router";
 import { Buffer } from 'buffer';
 
@@ -16,9 +14,7 @@ import { Buffer } from 'buffer';
 const renderApp = () => {
   createRoot(document.getElementById("root")!).render(
     <ThemeProvider>
-      <Suspense fallback={<Loading />}>
-        <RouterProvider router={router} />
-      </Suspense>
+      <RouterProvider router={router} />
     </ThemeProvider>
   );
 };

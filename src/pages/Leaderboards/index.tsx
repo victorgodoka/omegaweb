@@ -1,8 +1,10 @@
-import { useState, useEffect } from 'react';
-import { useTranslation } from 'react-i18next';
-import { Link } from 'react-router';
-import { Icon } from '@iconify/react';
-import { api } from '@/utils/Api';
+import { useEffect, useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
+import { Link } from "react-router";
+import { Icon } from "@iconify/react";
+import { api } from "@/utils/Api";
+import { PlayerAvatar } from "@/components/PlayerAvatar";
+import { getTierInfo } from "@/utils/Functions";
 
 interface LeaderboardPlayer {
   id: string;
@@ -24,385 +26,427 @@ interface LeaderboardData {
   OCG: LeaderboardPlayer[];
 }
 
-const getRankBadge = (position: number) => {
-  const badges = {
-    1: { icon: 'mdi:trophy', color: 'text-yellow-400', bg: 'bg-yellow-500/20', border: 'border-yellow-500/50' },
-    2: { icon: 'mdi:medal', color: 'text-gray-300', bg: 'bg-gray-400/20', border: 'border-gray-400/50' },
-    3: { icon: 'mdi:medal', color: 'text-orange-400', bg: 'bg-orange-500/20', border: 'border-orange-500/50' },
-    4: { icon: 'mdi:star', color: 'text-purple-400', bg: 'bg-purple-500/20', border: 'border-purple-500/50' },
-    5: { icon: 'mdi:star', color: 'text-blue-400', bg: 'bg-blue-500/20', border: 'border-blue-500/50' },
-  };
-  return badges[position as keyof typeof badges] || { icon: 'mdi:account', color: 'text-zinc-400', bg: 'bg-zinc-700/20', border: 'border-zinc-700/50' };
+const getWinRate = (player: LeaderboardPlayer) => {
+  if (!player || player.games === 0) return 0;
+  return (player.wins / player.games) * 100;
 };
 
-const getAvatarUrl = (avatar: string | null, id: string) => {
-  if (!avatar) return `https://cdn.discordapp.com/embed/avatars/${parseInt(id) % 5}.png`;
-  const extension = avatar.startsWith('a_') ? 'gif' : 'png';
-  return `https://cdn.discordapp.com/avatars/${id}/${avatar}.${extension}`;
-};
-
-const Leaderboards2 = () => {
+const Leaderboards = () => {
   const { t } = useTranslation();
   const [data, setData] = useState<LeaderboardData | null>(null);
-  const [selectedRegion, setSelectedRegion] = useState<'TCG' | 'OCG'>('TCG');
+  const [selectedRegion, setSelectedRegion] = useState<"TCG" | "OCG">("TCG");
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState(false);
 
   useEffect(() => {
     const fetchLeaderboard = async () => {
       try {
         setLoading(true);
         const response = await api.main.getLeaderboard();
-        
-        // A API retorna os dados diretamente em response.data (não em response.data.data)
+
         if (response.ok && response.data) {
-          setData(response.data as unknown as LeaderboardData);
+          setData(response.data.data);
         } else {
-          setError(t('error'));
+          setError(true);
         }
       } catch (err) {
-        console.error('Leaderboard Error:', err);
-        setError(t('error'));
+        console.error("Leaderboard Error:", err);
+        setError(true);
       } finally {
         setLoading(false);
       }
     };
 
     fetchLeaderboard();
-  }, [t]);
+  }, []);
+
+  const { currentData, featuredPlayer, spotlightPlayers, tablePlayers } =
+    useMemo(() => {
+      const leaderboardData = data
+        ? selectedRegion === "TCG"
+          ? data.TCG
+          : data.OCG
+        : null;
+
+      if (!leaderboardData || leaderboardData.length === 0) {
+        return {
+          currentData: leaderboardData,
+          featuredPlayer: null,
+          spotlightPlayers: [],
+          tablePlayers: [] as LeaderboardPlayer[],
+        };
+      }
+
+      const [first, ...restPlayers] = leaderboardData;
+      return {
+        currentData: leaderboardData,
+        featuredPlayer: first,
+        spotlightPlayers: restPlayers.slice(0, 4),
+        tablePlayers: leaderboardData,
+      };
+    }, [data, selectedRegion]);
 
   if (loading) {
     return (
-      <div className="w-full flex flex-col items-center px-4 mt-12 pb-12">
-        <div className="w-full max-w-6xl">
-          <div className="h-32 bg-zinc-800 rounded-lg animate-pulse mb-6"></div>
-          {[...Array(10)].map((_, i) => (
-            <div key={i} className="h-24 bg-zinc-800 rounded-lg animate-pulse mb-3"></div>
+      <section className="w-full px-4 pb-16 pt-28">
+        <div className="mx-auto w-full max-w-6xl space-y-4">
+          <div className="h-32 animate-pulse rounded-lg border border-zinc-800 bg-zinc-900/60" />
+          {[...Array(6)].map((_, index) => (
+            <div
+              key={index}
+              className="h-20 animate-pulse rounded-lg border border-zinc-800 bg-zinc-900/40"
+            />
           ))}
         </div>
-      </div>
+      </section>
     );
   }
 
   if (error || !data) {
     return (
-      <div className="w-full flex flex-col items-center px-4 mt-12 pb-12">
-        <div className="w-full max-w-6xl text-center">
-          <Icon icon="mdi:alert-circle" className="w-16 h-16 text-red-500 mx-auto mb-4" />
-          <p className="text-red-500 text-xl">{error || t('error')}</p>
+      <section className="w-full px-4 pb-16 pt-28">
+        <div className="mx-auto w-full max-w-4xl rounded-lg border border-red-500/20 bg-zinc-950 p-10 text-center">
+          <Icon
+            icon="mdi:alert-octagon"
+            className="mx-auto mb-4 h-10 w-10 text-red-400"
+          />
+          <p className="text-lg font-semibold text-white">
+            {t("leaderboard_page.error_title")}
+          </p>
+          <p className="mt-2 text-zinc-400">
+            {t("leaderboard_page.error_loading")}
+          </p>
         </div>
-      </div>
+      </section>
     );
   }
 
-  const currentData = selectedRegion === 'TCG' ? data.TCG : data.OCG;
-  const top1 = currentData[0];
-  const top2to5 = currentData.slice(1, 5);
-  const rest = currentData.slice(5);
+  if (!currentData || currentData.length === 0) {
+    return (
+      <section className="w-full px-4 pb-16 pt-28">
+        <div className="mx-auto w-full max-w-4xl rounded-lg border border-zinc-800 bg-zinc-950 p-10 text-center">
+          <p className="text-lg font-semibold text-white">
+            {t("leaderboard_page.empty_title")}
+          </p>
+          <p className="mt-2 text-zinc-400">
+            {t("leaderboard_page.empty_subtitle")}
+          </p>
+        </div>
+      </section>
+    );
+  }
+
+  const formatLabel =
+    selectedRegion === "TCG"
+      ? t("leaderboard_page.tcg_label")
+      : t("leaderboard_page.ocg_label");
 
   return (
-    <div className="w-full flex flex-col items-center px-4 mt-12 pb-12 space-y-8">
-      {/* Header */}
-      <div className="w-full max-w-6xl">
-        <div className="flex flex-col md:flex-row items-center justify-between gap-4 mb-6">
-          <div>
-            <h1 className="text-3xl md:text-4xl font-bold text-white mb-2 flex items-center gap-3">
-              <Icon icon="mdi:podium-gold" className="w-10 h-10 text-yellow-400" />
-              {t('leaderboards2.title')}
-            </h1>
-            <p className="text-zinc-400">{t('leaderboards2.subtitle')}</p>
+    <section className="w-full px-4 pb-16 pt-28">
+      <div className="mx-auto flex w-full max-w-6xl flex-col gap-8">
+        <header className="flex flex-col gap-6">
+          <div className="flex flex-col gap-2">
+            <span className="text-xs uppercase tracking-[0.3em] text-zinc-500">
+              {t("leaderboard_page.section_label")}
+            </span>
+            <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+              <div>
+                <h1 className="text-4xl font-semibold text-white">
+                  {t("leaderboard_page.title")}
+                </h1>
+                <p className="mt-2 text-zinc-400">
+                  {t("leaderboard_page.subtitle", { format: formatLabel })}
+                </p>
+              </div>
+              <div className="inline-flex items-center gap-2 rounded-md border border-zinc-800 px-3 py-1 text-xs text-zinc-400">
+                <span className="h-2 w-2 rounded-full bg-zinc-200" />
+                {t("leaderboard_page.updated_badge")}
+              </div>
+            </div>
           </div>
 
-          {/* Region Selector */}
-          <div className="flex gap-3">
-            <button
-              onClick={() => setSelectedRegion('TCG')}
-              className={`px-6 py-3 rounded-lg font-semibold transition-all flex items-center gap-2 ${
-                selectedRegion === 'TCG'
-                  ? 'bg-orange-500 text-white shadow-lg shadow-orange-500/50'
-                  : 'bg-zinc-800 text-zinc-400 hover:bg-zinc-700'
-              }`}
-            >
-              <Icon icon="mdi:earth" className="w-5 h-5" />
-              {t('statistics2.tcg')}
-            </button>
-            <button
-              onClick={() => setSelectedRegion('OCG')}
-              className={`px-6 py-3 rounded-lg font-semibold transition-all flex items-center gap-2 ${
-                selectedRegion === 'OCG'
-                  ? 'bg-purple-500 text-white shadow-lg shadow-purple-500/50'
-                  : 'bg-zinc-800 text-zinc-400 hover:bg-zinc-700'
-              }`}
-            >
-              <Icon icon="mdi:star" className="w-5 h-5" />
-              {t('leaderboards2.genesys')}
-            </button>
+          <div className="flex flex-col gap-2">
+            <span className="text-xs uppercase text-zinc-500">
+              {t("leaderboard_page.region_label")}
+            </span>
+            <div className="flex rounded-lg border border-zinc-800 bg-zinc-950 p-1 text-sm font-medium">
+              <button
+                type="button"
+                onClick={() => setSelectedRegion("TCG")}
+                className={`flex-1 rounded-md px-4 py-2 transition-colors ${selectedRegion === "TCG"
+                    ? "bg-white text-black"
+                    : "text-zinc-500 hover:text-zinc-200"
+                  }`}
+              >
+                {t("leaderboard_page.tcg_label")}
+              </button>
+              <button
+                type="button"
+                onClick={() => setSelectedRegion("OCG")}
+                className={`flex-1 rounded-md px-4 py-2 transition-colors ${selectedRegion === "OCG"
+                    ? "bg-white text-black"
+                    : "text-zinc-500 hover:text-zinc-200"
+                  }`}
+              >
+                {t("leaderboard_page.ocg_label")}
+              </button>
+            </div>
           </div>
-        </div>
+        </header>
 
-        {/* Top 5 - Destaque */}
-        <div className="mb-8">
-          <h2 className="text-2xl font-bold text-white mb-4 flex items-center gap-2">
-            <Icon icon="mdi:star-circle" className="w-6 h-6 text-yellow-400" />
-            {t('leaderboards2.top_5')}
-          </h2>
-          
-          {/* Top 1 - Linha única */}
-          {top1 && (() => {
-            const badge = getRankBadge(1);
-            const winRate = top1.games > 0 ? (top1.wins / top1.games) * 100 : 0;
-            
-            return (
-              <div className="mb-4">
-                <div
-                  className={`relative bg-gradient-to-br from-zinc-800 to-zinc-900 border-2 ${badge.border} rounded-xl p-6 hover:scale-[1.01] transition-all duration-300 shadow-xl`}
-                >
-                  {/* Position Badge */}
-                  <div className={`absolute -top-3 -left-3 w-12 h-12 ${badge.bg} border-2 ${badge.border} rounded-full flex items-center justify-center`}>
-                    <span className={`text-xl font-black ${badge.color}`}>#1</span>
-                  </div>
-
-                  <div className="flex items-center gap-4">
-                    {/* Avatar */}
+        {featuredPlayer && (
+          <div className="rounded-lg border border-zinc-800 bg-zinc-900/60 p-6">
+            <div className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
+              <div className="flex flex-1 items-center gap-4">
+                <div className="flex h-12 w-12 items-center justify-center rounded-md border border-zinc-800 text-sm font-semibold text-white">
+                  #{1}
+                </div>
+                <div className="flex items-center gap-4">
+                  <div className="relative">
+                    <PlayerAvatar
+                      id={featuredPlayer.id}
+                      avatar={featuredPlayer.avatar}
+                      displayname={featuredPlayer.displayname}
+                      username={featuredPlayer.username}
+                      rounded={true}
+                      size="lg"
+                      bordered={true}
+                    />
                     <img
-                      src={getAvatarUrl(top1.avatar, top1.id)}
-                      alt={top1.displayname || top1.username}
-                      className="w-20 h-20 rounded-full border-4 border-zinc-700"
+                      src={`/badges/TCG/${getTierInfo(
+                        featuredPlayer.rating
+                      ).name.toLowerCase()}.png`}
+                      alt={getTierInfo(featuredPlayer.rating).name}
+                      className="w-8 h-8 bottom-0 right-0 object-contain absolute"
                       onError={(e) => {
-                        (e.target as HTMLImageElement).src = `https://cdn.discordapp.com/embed/avatars/0.png`;
+                        const target = e.target as HTMLImageElement;
+                        target.style.display = "none";
                       }}
                     />
-
-                    {/* Player Info */}
-                    <div className="flex-1 min-w-0">
-                      <Link to={`/profile/${top1.id}`} className="block hover:opacity-80 transition-opacity">
-                        <h3 className="text-xl font-bold text-white truncate hover:text-orange-400 transition-colors">
-                          {top1.displayname || top1.username}
-                        </h3>
-                        <p className="text-sm text-zinc-400">@{top1.username}</p>
-                      </Link>
-                      
-                      {/* Rating */}
-                      <div className="flex items-center gap-2 mt-2">
-                        <Icon icon="mdi:chart-line" className="w-5 h-5 text-orange-400" />
-                        <span className="text-2xl font-bold text-orange-400">
-                          {Math.round(top1.rating)}
-                        </span>
-                      </div>
-                    </div>
-
-                    {/* Stats */}
-                    <div className="hidden md:flex flex-col items-end gap-1">
-                      <div className="flex items-center gap-2">
-                        <span className="text-sm text-zinc-400">{t('leaderboards2.win_rate')}:</span>
-                        <span className={`text-lg font-bold ${winRate >= 60 ? 'text-green-400' : winRate >= 50 ? 'text-yellow-400' : 'text-red-400'}`}>
-                          {winRate.toFixed(1)}%
-                        </span>
-                      </div>
-                      <div className="flex gap-3 text-sm">
-                        <span className="text-green-400">{top1.wins}W</span>
-                        <span className="text-red-400">{top1.loses}L</span>
-                        <span className="text-zinc-400">{top1.games}G</span>
-                      </div>
-                    </div>
                   </div>
-
-                  {/* Mobile Stats */}
-                  <div className="md:hidden mt-4 pt-4 border-t border-zinc-700 flex justify-between">
-                    <div>
-                      <span className="text-xs text-zinc-400">{t('leaderboards2.win_rate')}</span>
-                      <div className={`text-lg font-bold ${winRate >= 60 ? 'text-green-400' : winRate >= 50 ? 'text-yellow-400' : 'text-red-400'}`}>
-                        {winRate.toFixed(1)}%
-                      </div>
-                    </div>
-                    <div className="flex gap-3">
-                      <div className="text-center">
-                        <div className="text-xs text-zinc-400">{t('wins')}</div>
-                        <div className="text-green-400 font-bold">{top1.wins}</div>
-                      </div>
-                      <div className="text-center">
-                        <div className="text-xs text-zinc-400">{t('losses')}</div>
-                        <div className="text-red-400 font-bold">{top1.loses}</div>
-                      </div>
-                      <div className="text-center">
-                        <div className="text-xs text-zinc-400">{t('leaderboards2.games')}</div>
-                        <div className="text-zinc-300 font-bold">{top1.games}</div>
-                      </div>
-                    </div>
+                  <div>
+                    <Link
+                      to={`/profile/${featuredPlayer.id}`}
+                      className="text-2xl font-semibold text-white hover:text-zinc-200"
+                    >
+                      {featuredPlayer.displayname || featuredPlayer.username}
+                    </Link>
+                    <p className="text-sm text-zinc-500">
+                      @{featuredPlayer.username}
+                    </p>
                   </div>
                 </div>
               </div>
-            );
-          })()}
-          
-          {/* Top 2-5 - Grid 2 colunas */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {top2to5.map((player, index) => {
-              const position = index + 2;
-              const badge = getRankBadge(position);
-              const winRate = player.games > 0 ? (player.wins / player.games) * 100 : 0;
-
-              return (
-                <div
-                  key={player.id}
-                  className={`relative bg-gradient-to-br from-zinc-800 to-zinc-900 border-2 ${badge.border} rounded-xl p-6 hover:scale-[1.02] transition-all duration-300 shadow-xl`}
-                >
-                  {/* Position Badge */}
-                  <div className={`absolute -top-3 -left-3 w-12 h-12 ${badge.bg} border-2 ${badge.border} rounded-full flex items-center justify-center`}>
-                    <span className={`text-xl font-black ${badge.color}`}>#{position}</span>
-                  </div>
-
-                  <div className="flex items-center gap-4">
-                    {/* Avatar */}
-                    <img
-                      src={getAvatarUrl(player.avatar, player.id)}
-                      alt={player.displayname || player.username}
-                      className="w-20 h-20 rounded-full border-4 border-zinc-700"
-                      onError={(e) => {
-                        (e.target as HTMLImageElement).src = `https://cdn.discordapp.com/embed/avatars/0.png`;
-                      }}
-                    />
-
-                    {/* Player Info */}
-                    <div className="flex-1 min-w-0">
-                      <Link to={`/profile/${player.id}`} className="block hover:opacity-80 transition-opacity">
-                        <h3 className="text-xl font-bold text-white truncate hover:text-orange-400 transition-colors">
-                          {player.displayname || player.username}
-                        </h3>
-                        <p className="text-sm text-zinc-400">@{player.username}</p>
-                      </Link>
-                      
-                      {/* Rating */}
-                      <div className="flex items-center gap-2 mt-2">
-                        <Icon icon="mdi:chart-line" className="w-5 h-5 text-orange-400" />
-                        <span className="text-2xl font-bold text-orange-400">
-                          {Math.round(player.rating)}
-                        </span>
-                      </div>
-                    </div>
-
-                    {/* Stats */}
-                    <div className="hidden md:flex flex-col items-end gap-1">
-                      <div className="flex items-center gap-2">
-                        <span className="text-sm text-zinc-400">{t('leaderboards2.win_rate')}:</span>
-                        <span className={`text-lg font-bold ${winRate >= 60 ? 'text-green-400' : winRate >= 50 ? 'text-yellow-400' : 'text-red-400'}`}>
-                          {winRate.toFixed(1)}%
-                        </span>
-                      </div>
-                      <div className="flex gap-3 text-sm">
-                        <span className="text-green-400">{player.wins}W</span>
-                        <span className="text-red-400">{player.loses}L</span>
-                        <span className="text-zinc-400">{player.games}G</span>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Mobile Stats */}
-                  <div className="md:hidden mt-4 pt-4 border-t border-zinc-700 flex justify-between">
-                    <div>
-                      <span className="text-xs text-zinc-400">{t('leaderboards2.win_rate')}</span>
-                      <div className={`text-lg font-bold ${winRate >= 60 ? 'text-green-400' : winRate >= 50 ? 'text-yellow-400' : 'text-red-400'}`}>
-                        {winRate.toFixed(1)}%
-                      </div>
-                    </div>
-                    <div className="flex gap-3">
-                      <div className="text-center">
-                        <div className="text-xs text-zinc-400">{t('wins')}</div>
-                        <div className="text-green-400 font-bold">{player.wins}</div>
-                      </div>
-                      <div className="text-center">
-                        <div className="text-xs text-zinc-400">{t('losses')}</div>
-                        <div className="text-red-400 font-bold">{player.loses}</div>
-                      </div>
-                      <div className="text-center">
-                        <div className="text-xs text-zinc-400">{t('leaderboards2.games')}</div>
-                        <div className="text-zinc-300 font-bold">{player.games}</div>
-                      </div>
-                    </div>
-                  </div>
+              <div className="flex flex-1 flex-wrap justify-end gap-3 text-sm text-zinc-400">
+                <div className="rounded-md border border-zinc-800 bg-zinc-950 px-4 py-2">
+                  <p className="text-xs uppercase text-zinc-500">
+                    {t("leaderboard_page.rating")}
+                  </p>
+                  <p className="text-lg font-semibold text-white">
+                    {Math.round(featuredPlayer.rating)}
+                  </p>
                 </div>
-              );
-            })}
+                <div className="rounded-md border border-zinc-800 bg-zinc-950 px-4 py-2">
+                  <p className="text-xs uppercase text-zinc-500">
+                    {t("leaderboard_page.record_label")}
+                  </p>
+                  <p className="text-lg font-semibold text-white">
+                    {t("leaderboard_page.win_loss", {
+                      wins: featuredPlayer.wins,
+                      losses: featuredPlayer.loses,
+                    })}
+                  </p>
+                </div>
+                <div className="rounded-md border border-zinc-800 bg-zinc-950 px-4 py-2">
+                  <p className="text-xs uppercase text-zinc-500">
+                    {t("leaderboard_page.win_rate")}
+                  </p>
+                  <p className="text-lg font-semibold text-white">
+                    {getWinRate(featuredPlayer).toFixed(1)}%
+                  </p>
+                </div>
+                <div className="rounded-md border border-zinc-800 bg-zinc-950 px-4 py-2">
+                  <p className="text-xs uppercase text-zinc-500">
+                    {t("leaderboard_page.games_label")}
+                  </p>
+                  <p className="text-lg font-semibold text-white">
+                    {featuredPlayer.games}
+                  </p>
+                </div>
+              </div>
+            </div>
           </div>
-        </div>
+        )}
 
-        {/* Rest of Players */}
-        {rest.length > 0 && (
-          <div>
-            <h2 className="text-xl font-bold text-zinc-300 mb-4">{t('leaderboards2.all_players')}</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              {rest.map((player, index) => {
-                const position = index + 6;
-                const winRate = player.games > 0 ? (player.wins / player.games) * 100 : 0;
-
+        {spotlightPlayers.length > 0 && (
+          <div className="space-y-3">
+            <div className="flex items-center gap-2 text-sm text-zinc-400">
+              <Icon icon="mdi:spotlight" className="h-4 w-4 text-zinc-400" />
+              {t("leaderboard_page.spotlight_title")}
+            </div>
+            <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+              {spotlightPlayers.map((player, index) => {
+                const position = index + 2;
                 return (
-                  <div
+                  <article
                     key={player.id}
-                    className="relative bg-zinc-800/70 border border-zinc-700 rounded-lg p-4 hover:border-orange-500/50 transition-all duration-200 group"
+                    className="rounded-lg border border-zinc-800 bg-zinc-900/40 p-4"
                   >
-                    {/* Position Badge */}
-                    <div className="absolute -top-2 -left-2 w-8 h-8 bg-zinc-700 border-2 border-zinc-600 rounded-full flex items-center justify-center">
-                      <span className="text-xs font-bold text-zinc-300">#{position}</span>
-                    </div>
-
                     <div className="flex items-center gap-4">
+                      <div className="flex h-10 w-10 items-center justify-center rounded-md border border-zinc-800 text-sm text-white">
+                        #{position}
+                      </div>
+                      <div className="relative">
+                        <PlayerAvatar
+                          id={player.id}
+                          avatar={player.avatar}
+                          displayname={player.displayname}
+                          username={player.username}
+                          rounded={true}
+                          size="lg"
+                          bordered={true}
+                        />
 
-                      {/* Avatar */}
-                      <img
-                        src={getAvatarUrl(player.avatar, player.id)}
-                        alt={player.displayname || player.username}
-                        className="w-12 h-12 rounded-full border-2 border-zinc-700"
-                        onError={(e) => {
-                          (e.target as HTMLImageElement).src = `https://cdn.discordapp.com/embed/avatars/0.png`;
-                        }}
-                      />
-
-                      {/* Player Info */}
+                        <img
+                          src={`/badges/TCG/${getTierInfo(
+                            player.rating
+                          ).name.toLowerCase()}.png`}
+                          alt={getTierInfo(player.rating).name}
+                          className="w-8 h-8 bottom-0 right-0 object-contain absolute"
+                          onError={(e) => {
+                            const target = e.target as HTMLImageElement;
+                            target.style.display = "none";
+                          }}
+                        />
+                      </div>
                       <div className="flex-1 min-w-0">
-                        <Link to={`/profile/${player.id}`} className="block hover:opacity-80 transition-opacity">
-                          <h3 className="font-semibold text-white truncate group-hover:text-orange-400 transition-colors">
-                            {player.displayname || player.username}
-                          </h3>
-                          <p className="text-sm text-zinc-400">@{player.username}</p>
+                        <Link
+                          to={`/profile/${player.id}`}
+                          className="block truncate text-base font-semibold text-white hover:text-zinc-200"
+                        >
+                          {player.displayname || player.username}
                         </Link>
-                      </div>
-
-                      {/* Stats - Desktop */}
-                      <div className="hidden md:flex items-center gap-6">
-                        <div className="text-center">
-                          <div className="text-xs text-zinc-400">{t('leaderboards2.rating')}</div>
-                          <div className="text-lg font-bold text-orange-400">{Math.round(player.rating)}</div>
-                        </div>
-                        <div className="text-center">
-                          <div className="text-xs text-zinc-400">{t('leaderboards2.win_rate')}</div>
-                          <div className={`text-lg font-bold ${winRate >= 60 ? 'text-green-400' : winRate >= 50 ? 'text-yellow-400' : 'text-red-400'}`}>
-                            {winRate.toFixed(1)}%
-                          </div>
-                        </div>
-                        <div className="flex gap-3 text-sm">
-                          <span className="text-green-400">{player.wins}W</span>
-                          <span className="text-red-400">{player.loses}L</span>
-                          <span className="text-zinc-400">{player.games}G</span>
-                        </div>
-                      </div>
-
-                      {/* Stats - Mobile */}
-                      <div className="md:hidden flex flex-col items-end gap-1">
-                        <div className="text-orange-400 font-bold">{Math.round(player.rating)}</div>
-                        <div className={`text-sm font-bold ${winRate >= 60 ? 'text-green-400' : winRate >= 50 ? 'text-yellow-400' : 'text-red-400'}`}>
-                          {winRate.toFixed(1)}%
-                        </div>
+                        <p className="text-sm text-zinc-500">
+                          @{player.username}
+                        </p>
                       </div>
                     </div>
-                  </div>
+                    <div className="mt-4 flex flex-wrap gap-3 text-sm text-zinc-400">
+                      <span className="rounded-md border border-zinc-800 px-3 py-1 text-white">
+                        {Math.round(player.rating)}{" "}
+                        {t("leaderboard_page.rating_short")}
+                      </span>
+                      <span className="rounded-md border border-zinc-800 px-3 py-1">
+                        {t("leaderboard_page.win_loss", {
+                          wins: player.wins,
+                          losses: player.loses,
+                        })}
+                      </span>
+                      <span className="rounded-md border border-zinc-800 px-3 py-1">
+                        {getWinRate(player).toFixed(1)}%{" "}
+                        {t("leaderboard_page.win_rate")}
+                      </span>
+                    </div>
+                  </article>
                 );
               })}
             </div>
           </div>
         )}
+
+        <section className="space-y-4">
+          <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+            <div>
+              <p className="text-xs uppercase tracking-[0.2em] text-zinc-500">
+                {t("leaderboard_page.table_label")}
+              </p>
+              <h2 className="text-2xl font-semibold text-white">
+                {t("leaderboard_page.table_title")}
+              </h2>
+            </div>
+            <p className="text-sm text-zinc-500">
+              {t("leaderboard_page.table_subtitle")}
+            </p>
+          </div>
+
+          <div className="overflow-hidden rounded-lg border border-zinc-800">
+            <div className="hidden grid-cols-[72px_1fr_120px_120px_90px] bg-zinc-950 px-4 py-3 text-xs font-medium uppercase tracking-[0.2em] text-zinc-500 md:grid">
+              <span>{t("leaderboard_page.rank_column")}</span>
+              <span>{t("leaderboard_page.player_column")}</span>
+              <span>{t("leaderboard_page.rating_column")}</span>
+              <span>{t("leaderboard_page.record_column")}</span>
+              <span>{t("leaderboard_page.win_rate_column")}</span>
+            </div>
+            <div className="divide-y divide-zinc-900">
+              {tablePlayers.map((player, index) => {
+                const position = index + 1;
+                const winRate = getWinRate(player);
+                return (
+                  <article
+                    key={`${player.id}-${position}`}
+                    className="grid grid-cols-1 gap-4 px-4 py-4 text-sm text-zinc-300 md:grid-cols-[72px_1fr_120px_120px_90px] md:items-center"
+                  >
+                    <div className="flex items-center gap-3">
+                      <span className="text-base font-semibold text-white">
+                        #{position}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <div className="relative">
+                        <PlayerAvatar
+                          id={player.id}
+                          avatar={player.avatar}
+                          displayname={player.displayname}
+                          username={player.username}
+                          rounded={true}
+                          size="lg"
+                          bordered={true}
+                        />
+                        <img
+                          src={`/badges/TCG/${getTierInfo(
+                            player.rating
+                          ).name.toLowerCase()}.png`}
+                          alt={getTierInfo(player.rating).name}
+                          className="w-8 h-8 bottom-0 right-0 object-contain absolute"
+                          onError={(e) => {
+                            const target = e.target as HTMLImageElement;
+                            target.style.display = "none";
+                          }}
+                        />
+                      </div>
+                      <div className="min-w-0">
+                        <Link
+                          to={`/profile/${player.id}`}
+                          className="block truncate text-base font-medium text-white hover:text-zinc-200"
+                        >
+                          {player.displayname || player.username}
+                        </Link>
+                        <p className="text-sm text-zinc-500">
+                          @{player.username}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-center text-white">
+                      <span className="text-base font-semibold">
+                        {Math.round(player.rating)}
+                      </span>
+                    </div>
+                    <div className="text-white">
+                      {t("leaderboard_page.win_loss", {
+                        wins: player.wins,
+                        losses: player.loses,
+                      })}
+                    </div>
+                    <div className="text-white">{winRate.toFixed(1)}%</div>
+                  </article>
+                );
+              })}
+            </div>
+          </div>
+        </section>
       </div>
-    </div>
+    </section>
   );
 };
 
-export default Leaderboards2;
+export default Leaderboards;

@@ -55,7 +55,6 @@ const CatchDiscordError = () => {
   const discordParams = extractDiscordParams();
   
   if (discordParams) {
-    console.log('Discord OAuth params extracted:', discordParams);
     return <Navigate to={`/discord`} replace />;
   } else {
     console.warn('No valid Discord OAuth parameters found in URL:', window.location.href);

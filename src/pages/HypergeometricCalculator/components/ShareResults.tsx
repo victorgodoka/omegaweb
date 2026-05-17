@@ -1,6 +1,7 @@
 // src/pages/HypergeometricCalculator/components/ShareResults.tsx
 import React, { useState } from 'react';
 import { Icon } from '@iconify/react';
+import { useTranslation } from 'react-i18next';
 
 interface ShareResultsProps {
   shareableId: string | null;
@@ -13,6 +14,7 @@ export const ShareResults: React.FC<ShareResultsProps> = ({
   shareUrl,
   onClearShare,
 }) => {
+  const { t } = useTranslation();
   const [copied, setCopied] = useState(false);
 
   const copyToClipboard = async () => {
@@ -44,12 +46,12 @@ export const ShareResults: React.FC<ShareResultsProps> = ({
     <div className="bg-green-50 border border-green-200 rounded-lg p-6 my-4">
       <div className="flex items-center gap-3 mb-4">
         <Icon icon="mdi:check-circle" className="text-green-600 text-2xl" />
-        <h3 className="text-green-800 text-lg font-semibold flex-1">Configuration Saved Successfully!</h3>
+        <h3 className="text-green-800 text-lg font-semibold flex-1">{t('calculator.share_results.title')}</h3>
         {onClearShare && (
           <button 
             onClick={onClearShare}
             className="p-1 hover:bg-green-100 rounded text-green-800"
-            title="Clear share results"
+            title={t('calculator.share_results.clear')}
           >
             <Icon icon="mdi:close" />
           </button>
@@ -58,18 +60,18 @@ export const ShareResults: React.FC<ShareResultsProps> = ({
       
       <div>
         <p className="text-green-800 mb-4 leading-relaxed">
-          Your calculator configuration has been saved and can be shared with others.
+          {t('calculator.share_results.description')}
         </p>
         
         <div className="mb-4">
-          <label className="block mb-2 font-medium text-green-800 text-sm">Share ID:</label>
+          <label className="block mb-2 font-medium text-green-800 text-sm">{t('calculator.share_results.share_id')}</label>
           <code className="block bg-green-100 p-2 rounded border border-green-200 font-mono text-sm text-green-800">
             {shareableId}
           </code>
         </div>
         
         <div className="mb-4">
-          <label className="block mb-2 font-medium text-green-800 text-sm">Share URL:</label>
+          <label className="block mb-2 font-medium text-green-800 text-sm">{t('calculator.share_results.share_url')}</label>
           <div className="flex gap-2">
             <input 
               type="text" 
@@ -80,10 +82,10 @@ export const ShareResults: React.FC<ShareResultsProps> = ({
             <button 
               onClick={copyToClipboard}
               className="bg-green-600 text-white px-4 py-2 rounded text-sm font-medium hover:bg-green-700 active:bg-green-800 transition-colors flex items-center gap-1 whitespace-nowrap"
-              title="Copy to clipboard"
+              title={t('calculator.share_results.copy_tooltip')}
             >
               <Icon icon={copied ? "mdi:check" : "mdi:content-copy"} />
-              {copied ? 'Copied!' : 'Copy'}
+              {copied ? t('calculator.share_results.copied') : t('calculator.share_results.copy')}
             </button>
           </div>
         </div>

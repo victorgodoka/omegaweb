@@ -1,17 +1,22 @@
-import React, { useState, useCallback, lazy, Suspense } from 'react';
+import React, { useState, useCallback, lazy, Suspense, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useSearchParams } from 'react-router';
 import { Icon } from '@iconify/react';
 import { api } from '@/utils/Api';
+import { unwrapApiPayload } from '@/utils/unwrapApiPayload';
 import { useToast } from '@/contexts/ToastContext';
-import type { FormData, FormErrors, ConvertData } from './types';
+import type { FormData, FormErrors } from './types';
+import type { Card, Decklist } from '@/utils/ApiTypes';
+import type { DeckArchetype, FullDeck } from '../History/types';
+import DeckDisplay from '@/components/DeckDisplay';
+import { isExtraDeckCard } from '@/utils/Functions';
 
 // Lazy load heavy components
 const FormField = lazy(() => import('./components/FormField'));
-const DeckList = lazy(() => import('@/components/DeckList'));
-
 const PDFGenerator: React.FC = () => {
   const { t } = useTranslation();
   const { showSuccess, showError, showInfo } = useToast();
+  const [searchParams] = useSearchParams();
 
   const [formData, setFormData] = useState<FormData>({
     deck: '',
@@ -24,7 +29,7 @@ const PDFGenerator: React.FC = () => {
     country: '',
     event: ''
   });
-  
+
   // Separate state for the date input to avoid conflicts
   const [eventDate, setEventDate] = useState<string>('');
 
@@ -32,7 +37,15 @@ const PDFGenerator: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [isDeckValidating, setIsDeckValidating] = useState(false);
   const [isDeckValid, setIsDeckValid] = useState(false);
-  const [deckData, setDeckData] = useState<DeckLists | null>(null);
+  const [deckData, setDeckData] = useState<Decklist | null>(null);
+
+  // Read 'code' parameter from URL and populate deck field
+  useEffect(() => {
+    const codeParam = decodeURIComponent(searchParams.get('code') || '');
+    if (codeParam) {
+      setFormData(prev => ({ ...prev, deck: codeParam }));
+    }
+  }, [searchParams]);
 
   // Validation function
   const validateForm = useCallback((data: FormData): FormErrors => {
@@ -61,7 +74,7 @@ const PDFGenerator: React.FC = () => {
       // Validate date format and range
       const dateObj = new Date(eventDate);
       const year = dateObj.getFullYear();
-      
+
       if (isNaN(dateObj.getTime())) {
         validationErrors.eventDate = 'Invalid date format';
       } else if (year < 2020 || year > 2030) {
@@ -77,33 +90,60 @@ const PDFGenerator: React.FC = () => {
     return validationErrors;
   }, [eventDate]);
 
-  // Convert ConvertData to DeckLists format
-  const convertToDeckLists = useCallback((convertData: ConvertData): DeckLists => {
-    return {
-      code: formData.deck,
-      id: 'temp-id',
-      set: [], // Will be populated from archetype data if needed
-      mainDeck: convertData.mainDeck.map(card => ({
-        id: card.id,
-        name: card.name || `Card ${card.id}`,
-        qtd: card.qtd
-      })),
-      extraDeck: convertData.extraDeck.map(card => ({
-        id: card.id,
-        name: card.name || `Card ${card.id}`,
-        qtd: card.qtd
-      })),
-      sideDeck: convertData.sideDeck.map(card => ({
-        id: card.id,
-        name: card.name || `Card ${card.id}`,
-        qtd: card.qtd
-      })),
-      passwords: {
-        mainDeck: convertData.mainDeck.map(card => card.id),
-        sideDeck: convertData.sideDeck.map(card => card.id)
-      }
-    };
-  }, [formData.deck]);
+  const fetchCardsByIds = useCallback(async (ids: number[]): Promise<Card[]> => {
+    if (ids.length === 0) {
+      return [];
+    }
+
+    const response = await api.cards.search({
+      method: 'POST',
+      id: ids,
+      pageSize: ids.length,
+    });
+
+    const actualData = unwrapApiPayload<{ cards: Card[] }>(response.data);
+
+    if (!response.ok || !actualData?.cards) {
+      throw new Error('Failed to load card data for deck preview.');
+    }
+
+    return actualData.cards as Card[];
+  }, []);
+
+  const buildDecklistFromFullDeck = useCallback(
+    (fullDeck: FullDeck, cardsData: Card[], archetypes: DeckArchetype[]): Decklist => {
+      const cardMap = new Map(cardsData.map(card => [card.id, card]));
+
+      const mainDeckCards: Card[] = [];
+      const extraDeckCards: Card[] = [];
+      const sideDeckCards: Card[] = [];
+
+      (fullDeck.main || []).forEach(cardId => {
+        const card = cardMap.get(cardId);
+        if (!card) return;
+        if (isExtraDeckCard(card)) {
+          extraDeckCards.push(card);
+        } else {
+          mainDeckCards.push(card);
+        }
+      });
+
+      (fullDeck.side || []).forEach(cardId => {
+        const card = cardMap.get(cardId);
+        if (card) {
+          sideDeckCards.push(card);
+        }
+      });
+
+      return {
+        archetypes: archetypes.map(arch => arch.name),
+        mainDeck: mainDeckCards,
+        extraDeck: extraDeckCards,
+        sideDeck: sideDeckCards,
+      };
+    },
+    []
+  );
 
   // Deck validation function
   const validateDeckCode = useCallback(async (deckCode: string) => {
@@ -123,11 +163,22 @@ const PDFGenerator: React.FC = () => {
 
       if (response.ok && response.data) {
         if (response.success) {
+          const { fullDeck, archetypes } = response.data.data as {
+            fullDeck: FullDeck;
+            archetypes: DeckArchetype[];
+          };
+          const allCardIds = Array.from(
+            new Set([...(fullDeck.main || []), ...(fullDeck.side || [])])
+          );
+
+          const cardsData = await fetchCardsByIds(allCardIds);
+          const newLoadedDeck = buildDecklistFromFullDeck(fullDeck, cardsData, archetypes);
+
+          setDeckData(newLoadedDeck);
           setIsDeckValid(true);
-          // Convert to DeckLists format for the DeckList component
-          const deckListsData = convertToDeckLists(response.data);
-          setDeckData(deckListsData);
-          showSuccess(`Deck validated successfully! Loaded ${deckListsData.mainDeck.length} main deck, ${deckListsData.extraDeck.length} extra deck, and ${deckListsData.sideDeck.length} side deck cards.`);
+          showSuccess(
+            `Deck validated successfully! Loaded ${newLoadedDeck.mainDeck.length} main deck, ${newLoadedDeck.extraDeck.length} extra deck, and ${newLoadedDeck.sideDeck.length} side deck cards.`
+          );
         } else {
           setIsDeckValid(false);
           setDeckData(null);
@@ -145,7 +196,7 @@ const PDFGenerator: React.FC = () => {
     } finally {
       setIsDeckValidating(false);
     }
-  }, [showSuccess, showError, showInfo, convertToDeckLists]);
+  }, [showSuccess, showError, showInfo, fetchCardsByIds, buildDecklistFromFullDeck]);
 
   // Real-time validation
   const handleInputChange = useCallback((field: keyof FormData, value: string) => {
@@ -174,14 +225,14 @@ const PDFGenerator: React.FC = () => {
     // Check required fields: deck, name, lastName, cardGameID, country, event, and eventDate
     const requiredFields = [
       formData.deck,
-      formData.name, 
+      formData.name,
       formData.lastName,
       formData.cardGameID,
       formData.country,
       formData.event,
       eventDate // Include the separate eventDate state
     ];
-    
+
     const totalFields = requiredFields.length;
     const completedFields = requiredFields.filter(value => value && value.trim() !== '').length;
     return Math.round((completedFields / totalFields) * 100);
@@ -259,7 +310,7 @@ const PDFGenerator: React.FC = () => {
   const progress = getFormProgress();
 
   return (
-    <div className="min-h-screen bg-zinc-900 text-zinc-100 mt-12">
+    <div className="text-zinc-100 mt-12">
       <div className="container mx-auto px-4 py-8">
         {/* Success messages now shown via toast notifications */}
 
@@ -302,7 +353,7 @@ const PDFGenerator: React.FC = () => {
                     type="button"
                     onClick={() => validateDeckCode(formData.deck)}
                     disabled={!formData.deck.trim() || isDeckValidating}
-                    className="px-6 py-2 bg-gradient-to-r from-orange-600 to-red-600 text-white font-medium rounded-lg hover:from-orange-700 hover:to-red-700 focus:outline-none focus:ring-2 focus:ring-orange-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300 flex items-center gap-2"
+                    className="px-6 py-2 bg-linear-to-r from-orange-600 to-red-600 text-white font-medium rounded-lg hover:from-orange-700 hover:to-red-700 focus:outline-none focus:ring-2 focus:ring-orange-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300 flex items-center gap-2"
                   >
                     {isDeckValidating ? (
                       <>
@@ -431,7 +482,7 @@ const PDFGenerator: React.FC = () => {
                 type="button"
                 onClick={handleDownloadPDF}
                 disabled={isLoading || progress < 100 || !isDeckValid}
-                className="px-6 py-3 bg-gradient-to-r from-blue-600 to-blue-700 text-white font-semibold rounded-lg hover:from-blue-700 hover:to-blue-800 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300 flex items-center gap-2"
+                className="px-6 py-3 bg-linear-to-r from-blue-600 to-blue-700 text-white font-semibold rounded-lg hover:from-blue-700 hover:to-blue-800 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300 flex items-center gap-2"
               >
                 {isLoading ? (
                   <>
@@ -450,12 +501,12 @@ const PDFGenerator: React.FC = () => {
                   </>
                 )}
               </button>
-              
+
               <button
                 type="button"
                 onClick={handleViewPDF}
                 disabled={isLoading || progress < 100 || !isDeckValid}
-                className="px-6 py-3 bg-gradient-to-r from-purple-600 to-purple-700 text-white font-semibold rounded-lg hover:from-purple-700 hover:to-purple-800 focus:outline-none focus:ring-2 focus:ring-purple-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300 flex items-center gap-2"
+                className="px-6 py-3 bg-linear-to-r from-purple-600 to-purple-700 text-white font-semibold rounded-lg hover:from-purple-700 hover:to-purple-800 focus:outline-none focus:ring-2 focus:ring-purple-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-300 flex items-center gap-2"
               >
                 {isLoading ? (
                   <>
@@ -484,7 +535,7 @@ const PDFGenerator: React.FC = () => {
                 <Icon icon="mdi:view-list" className="text-green-400" />
                 {t('pdf_generator.deck_preview')}
               </h2>
-              <DeckList deck={deckData} />
+              <DeckDisplay deck={deckData} />
             </div>
           )}
         </div>

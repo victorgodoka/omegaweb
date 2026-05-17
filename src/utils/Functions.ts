@@ -1,4 +1,5 @@
-import type { Player } from "@/pages/Live/types";
+import type { Player } from '@/pages/tournament/types';
+import type { Card } from './ApiTypes';
 
 export const copyToClipboard = async (text: string, t?: (key: string) => string): Promise<void> => {
   try {
@@ -75,22 +76,10 @@ export const decodeDuelData = (data: number, t?: (key: string) => string) => {
   return result;
 }
 
-export const getTopCut = (n: number): number => {
-  switch (true) {
-    case n >= 4 && n < 8:
-      return 4
-    case n >= 8:
-      return 8
-    default:
-      return n
-  }
-}
-
 export const getDuelist = (id: string, players: Player[] | null, t?: (key: string) => string) => {
   const byeText = t ? t('bye_player') : 'BYE';
   return players?.find(p => p.id === id) || { username: byeText, avatar: '/default.png', id: '', displayname: byeText };
 }
-
 
 export const getTierInfo = (rating: number): { name: string; image: string } => {
   let tierName = 'Iron';
@@ -107,4 +96,31 @@ export const getTierInfo = (rating: number): { name: string; image: string } => 
     name: tierName,
     image: `/badges/TCG/${tierName.toLowerCase()}.png`
   };
+};
+
+export const isExtraDeckCard = (card: Card) => {
+  const tags = card.type_tags || [];
+  return tags.some((tag) => ['Fusion', 'Synchro', 'XYZ', 'Xyz', 'Link'].includes(tag));
+};
+
+export const isWhatType = (card: Card, search: "Spell" | "Trap" | "Monster") => {
+  const type = card.type_primary || "";
+  return type === search;
+};
+
+export type CardWithQuantity = Card & { qty: number };
+
+export const groupCardsByQuantity = (cards: Card[]): CardWithQuantity[] => {
+  const cardMap = new Map<number, CardWithQuantity>();
+
+  for (const card of cards) {
+    const existing = cardMap.get(card.id);
+    if (existing) {
+      existing.qty += 1;
+    } else {
+      cardMap.set(card.id, { ...card, qty: 1 });
+    }
+  }
+
+  return Array.from(cardMap.values());
 };

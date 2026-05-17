@@ -1,6 +1,7 @@
 // src/utils/calculatorApi.ts
 import { AuthManager } from './auth';
 import { api } from './Api';
+import { unwrapApiPayload } from './unwrapApiPayload';
 
 export interface CardGroup {
   name: string;
@@ -42,16 +43,17 @@ export async function saveCalculatorConfiguration(
 ): Promise<SaveCalculatorResponse> {
   try {
     const headers = AuthManager.getAuthHeader();
-    const res = await api.main.post<SaveCalculatorResponse>('calculator/save', config, {
+    const res = await api.main.post('calculator/save', config, {
       headers: {
         ...headers,
       },
     });
 
+    const saved = unwrapApiPayload<{ shareableId?: string; shareUrl?: string }>(res.data) ?? (res.data as { shareableId?: string; shareUrl?: string } | undefined);
     return {
       success: res.success || false,
-      shareableId: (res.data as any)?.shareableId,
-      shareUrl: (res.data as any)?.shareUrl,
+      shareableId: saved?.shareableId,
+      shareUrl: saved?.shareUrl,
       message: res.message,
     };
   } catch (error) {

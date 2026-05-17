@@ -1,1391 +1,1534 @@
-import React, { useMemo, useState, useCallback, useEffect } from 'react';
-import { useCache } from '../../contexts/CacheContext';
-import { Icon } from '@iconify/react';
-import { api } from '../../utils/Api';
-import DeckEditorSkeleton from './components/DeckEditorSkeleton';
-import DeckBuilderInfoModal from './components/DeckBuilderInfoModal';
-import { useDeck } from './hooks/useDeck';
-import { useCardSelection } from './hooks/useCardSelection';
-import { useCardSearch } from './hooks/useCardSearch';
-import { useGenesys } from '../../contexts/GenesysContext';
-import Toast, { type ToastType } from '../../components/ui/Toast';
-import CardFiltersComponent from './components/CardFilters';
-import type { Card, DeckCard } from './types';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { Icon } from '@iconify/react';
+import { useCardsSearch } from '@/contexts/CardsSearchContext';
+import type { Card, CardsSearchParams } from '@/utils/ApiTypes';
+import { useToast } from '@/contexts/ToastContext';
+import { COPY_LIMITS } from '@/utils/const';
+import { isExtraDeckCard } from '@/utils/Functions';
 
-interface ToastMessage {
-  id: string;
-  type: ToastType;
-  title?: string;
-  message: string;
+type DeckSection = 'main' | 'extra' | 'side';
+type DeckRegion = 'TCG' | 'OCG' | 'WCS' | 'Genesys';
+type BanStatus = 0 | 1 | 2;
+const GENESYS_POINTS_CAP = 100;
+
+interface DeckEntry {
+  card: Card;
+  count: number;
 }
 
-// Memoized card component for better performance
-const CardItem = React.memo<{
-  card: Card;
-  banlist: string;
-  onAdd: (card: Card) => void;
-  onHover: (card: Card) => void;
-  onLongPress: (card: Card) => void;
-  getCardGenesysPoints: (cardName: string) => number;
-}>(({ card, banlist, onAdd, onHover, onLongPress, getCardGenesysPoints }) => {
-  const getBanlistStatus = (card: Card): string => {
-    if (banlist === 'TCG Genesys') return 'unlimited';
+const SECTION_LIMITS: Record<DeckSection, number> = {
+  main: 60,
+  extra: 15,
+  side: 15,
+};
 
-    const banlistInfo = card.banlist_info;
-    if (!banlistInfo) return 'unlimited';
+const MIN_MAIN_DECK = 40;
+const DEBOUNCE_DELAY = 400;
+const CARDS_PER_PAGE = 24;
 
-    const statusKey = `ban_${banlist.toLowerCase()}` as keyof typeof banlistInfo;
-    const status = banlistInfo[statusKey];
+const attributeOptions: Array<{ label: string; value: CardsSearchParams['attribute'] }> = [
+  { label: 'EARTH', value: 'EARTH' },
+  { label: 'WATER', value: 'WATER' },
+  { label: 'FIRE', value: 'FIRE' },
+  { label: 'WIND', value: 'WIND' },
+  { label: 'LIGHT', value: 'LIGHT' },
+  { label: 'DARK', value: 'DARK' },
+  { label: 'DIVINE', value: 'DIVINE' },
+];
 
-    switch (status) {
-      case 'Forbidden': return 'forbidden';
-      case 'Limited': return 'limited';
-      case 'Semi-Limited': return 'semi-limited';
-      default: return 'unlimited';
-    }
-  };
+const typeOptions: Array<{ label: string; value: 'Monster' | 'Spell' | 'Trap' }> = [
+  { label: 'Monster', value: 'Monster' },
+  { label: 'Spell', value: 'Spell' },
+  { label: 'Trap', value: 'Trap' },
+];
 
-  return (
-    <div
-      className="relative group cursor-pointer"
-      onClick={() => onAdd(card)}
-      onMouseEnter={() => onHover(card)}
-      onContextMenu={(e) => {
-        e.preventDefault();
-        onLongPress(card);
-      }}
-    >
-      <img
-        src={card.card_images[0]?.image_url_small}
-        alt={card.name}
-        className="w-full aspect-[3/4] object-cover rounded border-2 border-zinc-600 hover:border-blue-400 transition-colors"
-      />
+const spellSubtypeOptions: Array<{ labelKey: string; value: string }> = [
+  { labelKey: 'normal', value: 'Normal' },
+  { labelKey: 'quick', value: 'Quick-Play' },
+  { labelKey: 'field', value: 'Field' },
+  { labelKey: 'equip', value: 'Equip' },
+  { labelKey: 'continuous', value: 'Continuous' },
+];
 
-      {getBanlistStatus(card) !== 'unlimited' && (
-        <div className={`absolute top-1 left-1 w-3 h-3 rounded-full ${getBanlistStatus(card) === 'forbidden' ? 'bg-red-500' :
-          getBanlistStatus(card) === 'limited' ? 'bg-yellow-500' :
-            getBanlistStatus(card) === 'semi-limited' ? 'bg-orange-500' : ''
-          }`} />
-      )}
+const trapSubtypeOptions: Array<{ labelKey: string; value: string }> = [
+  { labelKey: 'normal', value: 'Normal' },
+  { labelKey: 'counter', value: 'Counter' },
+  { labelKey: 'continuous', value: 'Continuous' },
+];
 
-      {banlist === 'TCG Genesys' && (
-        <div className="absolute top-1 right-1 bg-blue-600 text-white text-sm font-bold rounded-full w-6 h-6 flex items-center justify-center shadow-lg border-2 border-white">
-          {getCardGenesysPoints(card.name)}
-        </div>
-      )}
+const monsterTypeOptions: string[] = [
+  'Normal',
+  'Effect',
+  'Fusion',
+  'Ritual',
+  'Spirit',
+  'Union',
+  'Gemini',
+  'Tuner',
+  'Synchro',
+  'Flip',
+  'Toon',
+  'Xyz',
+  'Pendulum',
+  'Link',
+];
 
-      <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity rounded flex items-center justify-center">
-        <Icon icon="mdi:plus" className="text-white text-2xl" />
-      </div>
-    </div>
-  );
+type CardCategory = '' | 'Monster' | 'Spell' | 'Trap';
+
+const regionOptions: Array<{ label: string; value: DeckRegion }> = [
+  { label: 'TCG', value: 'TCG' },
+  { label: 'OCG', value: 'OCG' },
+  { label: 'WCS', value: 'WCS' },
+  { label: 'Genesys', value: 'Genesys' },
+];
+
+type AdvancedFilters = {
+  type: CardCategory;
+  attribute: CardsSearchParams['attribute'] | '';
+  levelMin: string;
+  levelMax: string;
+  atkMin: string;
+  atkMax: string;
+  defMin: string;
+  defMax: string;
+  fname: string;
+  desc: string;
+  spellSubtype: string;
+  trapSubtype: string;
+  monsterTypes: string[];
+  race: string;
+  pScale: string;
+};
+
+const createAdvancedDefaults = (): AdvancedFilters => ({
+  type: '',
+  attribute: '',
+  levelMin: '',
+  levelMax: '',
+  atkMin: '',
+  atkMax: '',
+  defMin: '',
+  defMax: '',
+  fname: '',
+  desc: '',
+  spellSubtype: '',
+  trapSubtype: '',
+  monsterTypes: [],
+  race: '',
+  pScale: '',
 });
 
-const DeckEditor: React.FC = () => {
-  const { t } = useTranslation();
-  const { cardStats, isLoading, error } = useCache();
-  const [showInfoModal, setShowInfoModal] = useState(false);
-  const [activeDeckTab, setActiveDeckTab] = useState<'main' | 'extra' | 'side'>('main');
-  const [deckName, setDeckName] = useState('New Deck');
-  const [genesysPointsCap, setGenesysPointsCap] = useState(100);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('');
-  const [showFilters, setShowFilters] = useState(false);
-  const [sortBy, setSortBy] = useState('name');
-  const [sortOrder, setSortOrder] = useState('asc');
-  const [toasts, setToasts] = useState<ToastMessage[]>([]);
-  const [selectedCardModal, setSelectedCardModal] = useState<Card | null>(null);
-  const [displayLimit, setDisplayLimit] = useState(50);
-  const [isSearching, setIsSearching] = useState(false);
-  const [showImportDialog, setShowImportDialog] = useState(false);
-  const [importCode, setImportCode] = useState('');
-  const [isImporting, setIsImporting] = useState(false);
-  const [showCodesDialog, setShowCodesDialog] = useState(false);
-  const [generatedCodes, setGeneratedCodes] = useState<{ydke: string, omega: string} | null>(null);
-  const [isGeneratingCodes, setIsGeneratingCodes] = useState(false);
-  const [isExportingToOmega, setIsExportingToOmega] = useState(false);
+const createEmptyDeck = (): Record<DeckSection, DeckEntry[]> => ({
+  main: [],
+  extra: [],
+  side: [],
+});
 
-  // Use custom hooks for deck and card selection logic
-  const {
-    deck,
-    deckStats,
-    addCardToDeck,
-    removeCardFromDeck,
-    clearDeck,
-    changeBanlist,
-  } = useDeck();
+const DeckEditor = () => {
+  const { t, i18n } = useTranslation();
+  const { cards, isLoading, error, searchCards, clearSearch } = useCardsSearch();
 
-  const {
-    handleCardHover
-  } = useCardSelection();
+  const [basicQuery, setBasicQuery] = useState('');
+  const [deckRegion, setDeckRegion] = useState<DeckRegion>('TCG');
+  const [isAdvancedOpen, setIsAdvancedOpen] = useState(false);
+  const [advancedValues, setAdvancedValues] = useState<AdvancedFilters>(() => createAdvancedDefaults());
+  const [appliedAdvanced, setAppliedAdvanced] = useState<AdvancedFilters>(() => createAdvancedDefaults());
 
-  // Genesys context for points data - only access when needed
-  const { genesysData } = useGenesys();
-  
-  // Create a memoized card name to ID mapping for better performance
-  const cardNameToIdMap = useMemo(() => {
-    if (!cardStats) return new Map<string, number>();
-    const map = new Map<string, number>();
-    cardStats.forEach(card => {
-      map.set(card.name.toLowerCase(), card.id);
-    });
-    return map;
-  }, [cardStats]);
-  
-  // Optimized helper function to get Genesys points for a card - only when banlist is TCG Genesys
-  const getCardGenesysPoints = useCallback((cardName: string): number => {
-    if (deck.banlist !== 'TCG Genesys') return 0; // Early return for non-Genesys formats
-    const cardId = cardNameToIdMap.get(cardName.toLowerCase());
-    if (!cardId) return 0;
-    return genesysData[cardId] || 0;
-  }, [genesysData, cardNameToIdMap, deck.banlist]);
+  const [activeDeckTab, setActiveDeckTab] = useState<DeckSection>('main');
+  const [inspectedCard, setInspectedCard] = useState<Card | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const { showError, showWarning } = useToast();
+  const warningsShownRef = useRef<string[]>([]);
+  const mainDeckToastShownRef = useRef(false);
+  const [deck, setDeck] = useState<Record<DeckSection, DeckEntry[]>>(() => createEmptyDeck());
 
-  // Function to expand deck cards into individual instances (no stacking)
-  const expandDeckCards = useCallback((cards: DeckCard[]): Card[] => {
-    const expandedCards: Card[] = [];
-    cards.forEach(deckCard => {
-      for (let i = 0; i < deckCard.quantity; i++) {
-        expandedCards.push(deckCard.card);
+  const isSpellTypeSelected = advancedValues.type === 'Spell';
+  const isTrapTypeSelected = advancedValues.type === 'Trap';
+  const isMonsterTypeSelected = advancedValues.type === 'Monster';
+  const monsterTypesSelected = advancedValues.monsterTypes;
+  const hasPendulumSelected = monsterTypesSelected.includes('Pendulum');
+  const hasXyzSelected = monsterTypesSelected.includes('Xyz');
+  const hasLinkSelected = monsterTypesSelected.includes('Link');
+
+  const levelMinLabelKey = isMonsterTypeSelected
+    ? hasLinkSelected
+      ? 'deck_editor.filters.link_min'
+      : hasXyzSelected
+        ? 'deck_editor.filters.rank_min'
+        : 'deck_editor.filters.level_min'
+    : 'deck_editor.filters.level_min';
+
+  const levelMaxLabelKey = isMonsterTypeSelected
+    ? hasLinkSelected
+      ? 'deck_editor.filters.link_max'
+      : hasXyzSelected
+        ? 'deck_editor.filters.rank_max'
+        : 'deck_editor.filters.level_max'
+    : 'deck_editor.filters.level_max';
+
+  const deckTotals = useMemo(() => ({
+    main: deck.main.reduce((acc, entry) => acc + entry.count, 0),
+    extra: deck.extra.reduce((acc, entry) => acc + entry.count, 0),
+    side: deck.side.reduce((acc, entry) => acc + entry.count, 0),
+  }), [deck]);
+
+  const getCardDisplayName = useCallback(
+    (card: Card) => {
+      const isPortuguese = i18n.language?.startsWith('pt');
+      const preferredName = isPortuguese
+        ? card.name_pt || card.name_en
+        : card.name_en || card.name_pt;
+
+      return (
+        preferredName ||
+        t('deck_editor.results.unnamed_card', {
+          id: card.id,
+        })
+      );
+    },
+    [i18n.language, t]
+  );
+
+  const getCardDescription = useCallback(
+    (card: Card) => {
+      const isPortuguese = i18n.language?.startsWith('pt');
+      return isPortuguese
+        ? card.desc_pt || card.desc_en || ''
+        : card.desc_en || card.desc_pt || '';
+    },
+    [i18n.language]
+  );
+
+  const getGenesysPointsForCard = useCallback((card: Card) => card.banlist_data?.genesys?.value || 0, []);
+
+  const calculateDeckGenesysPoints = useCallback(
+    (targetDeck: Record<DeckSection, DeckEntry[]>) => {
+      return (['main', 'extra', 'side'] as DeckSection[]).reduce((total, section) => {
+        return (
+          total +
+          targetDeck[section].reduce((sectionTotal, entry) => {
+            return sectionTotal + (entry.card.banlist_data?.genesys?.value || 0) * entry.count;
+          }, 0)
+        );
+      }, 0);
+    },
+    []
+  );
+
+  const genesysPointsUsed = useMemo(() => {
+    if (deckRegion !== 'Genesys') {
+      return 0;
+    }
+    return calculateDeckGenesysPoints(deck);
+  }, [deck, deckRegion, calculateDeckGenesysPoints]);
+
+  const genesysPointsRemaining = Math.max(0, GENESYS_POINTS_CAP - genesysPointsUsed);
+
+  const getBanStatusForCard = useCallback(
+    (card: Card): BanStatus | null => {
+      if (deckRegion === 'Genesys' || !card.banlist_data) {
+        return null;
+      }
+
+      const regionKey = deckRegion.toLowerCase() as keyof NonNullable<Card['banlist_data']>;
+      const regionData = card.banlist_data[regionKey];
+
+      if (!regionData || regionData.value === undefined || regionData.value === null) {
+        return null;
+      }
+
+      const numericValue = typeof regionData.value === 'string'
+        ? parseInt(regionData.value, 10)
+        : regionData.value;
+
+      if (numericValue === 0 || numericValue === 1 || numericValue === 2) {
+        return numericValue as BanStatus;
+      }
+
+      return null;
+    },
+    [deckRegion]
+  );
+
+  const deckWarnings = useMemo(() => {
+    const warnings: string[] = [];
+    if (deckTotals.main > 0 && deckTotals.main < MIN_MAIN_DECK) {
+      warnings.push(t('deck_editor.limits.main_range', { min: MIN_MAIN_DECK }));
+    }
+    (['extra', 'side'] as DeckSection[]).forEach((section) => {
+      if (deckTotals[section] > SECTION_LIMITS[section]) {
+        warnings.push(
+          t('deck_editor.limits.section_max', {
+            section: t(`deck_editor.builder.section_${section}`),
+            max: SECTION_LIMITS[section],
+          })
+        );
       }
     });
-    return expandedCards;
-  }, []);
+    if (deckRegion === 'Genesys' && genesysPointsUsed > GENESYS_POINTS_CAP) {
+      warnings.push(
+        t('deck_editor.genesys.points_warning', {
+          used: genesysPointsUsed,
+          cap: GENESYS_POINTS_CAP,
+        })
+      );
+    }
+    return warnings;
+  }, [deckTotals, deckRegion, genesysPointsUsed, t]);
 
-  // Sorting function for individual cards
-  const sortCards = useCallback((cards: Card[]): Card[] => {
-    return [...cards].sort((cardA, cardB) => {
-      // Priority: Monster > Spell > Trap
-      const getTypeOrder = (card: Card): number => {
-        if (card.humanReadableCardType.includes('Monster')) return 0;
-        if (card.humanReadableCardType.includes('Spell')) return 1;
-        if (card.humanReadableCardType.includes('Trap')) return 2;
-        return 3;
-      };
-
-      const typeOrderA = getTypeOrder(cardA);
-      const typeOrderB = getTypeOrder(cardB);
-
-      if (typeOrderA !== typeOrderB) {
-        return typeOrderA - typeOrderB;
+  const activeAdvancedCount = useMemo(() => {
+    return Object.values(appliedAdvanced).reduce((count, value) => {
+      if (Array.isArray(value)) {
+        return value.length > 0 ? count + 1 : count;
       }
-
-      // If both are monsters, sort by level > ATK > DEF > name
-      if (typeOrderA === 0) {
-        // Level comparison (higher level first)
-        const levelA = cardA.level || 0;
-        const levelB = cardB.level || 0;
-        if (levelA !== levelB) {
-          return levelB - levelA;
-        }
-
-        // ATK comparison (higher ATK first)
-        const atkA = cardA.atk || 0;
-        const atkB = cardB.atk || 0;
-        if (atkA !== atkB) {
-          return atkB - atkA;
-        }
-
-        // DEF comparison (higher DEF first)
-        const defA = cardA.def || 0;
-        const defB = cardB.def || 0;
-        if (defA !== defB) {
-          return defB - defA;
-        }
+      if (typeof value === 'string') {
+        return value.trim() !== '' ? count + 1 : count;
       }
+      return count;
+    }, 0);
+  }, [appliedAdvanced]);
 
-      // If both are spells/traps, sort by subtype then name
-      if (typeOrderA === 1 || typeOrderA === 2) {
-        const typeA = cardA.type || '';
-        const typeB = cardB.type || '';
-        if (typeA !== typeB) {
-          return typeA.localeCompare(typeB);
-        }
-      }
+  const buildSearchParams = useCallback((): CardsSearchParams => {
+    const params: CardsSearchParams = {};
 
-      // Final sort by name
-      return cardA.name.localeCompare(cardB.name);
-    });
-  }, []);
-
-  // Get sorted and expanded deck cards for display
-  const getSortedExpandedCards = useCallback((deckCards: DeckCard[]): Card[] => {
-    const expanded = expandDeckCards(deckCards);
-    return sortCards(expanded);
-  }, [expandDeckCards, sortCards]);
-
-  // Toast utility functions
-  const showToast = useCallback((type: ToastType, message: string, title?: string) => {
-    const id = Date.now().toString();
-    const newToast: ToastMessage = { id, type, message, title };
-    setToasts(prev => [...prev, newToast]);
-  }, []);
-
-  const removeToast = useCallback((id: string) => {
-    setToasts(prev => prev.filter(toast => toast.id !== id));
-  }, []);
-
-  // Debounced search to prevent excessive filtering - increased delay for better performance
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setDebouncedSearchQuery(searchQuery);
-      setIsSearching(false);
-    }, 500); // Increased from 300ms to 500ms
-
-    if (searchQuery !== debouncedSearchQuery) {
-      setIsSearching(true);
+    const trimmedQuery = basicQuery.trim();
+    if (trimmedQuery) {
+      params.q = trimmedQuery;
     }
 
-    return () => clearTimeout(timer);
-  }, [searchQuery, debouncedSearchQuery]);
+    const trimmedFname = appliedAdvanced.fname.trim();
+    if (trimmedFname) {
+      params.fname = trimmedFname;
+    }
 
-  // Convert YGOAPI to Card type - optimized with early return for empty data
-  const cardLibrary = useMemo(() => {
-    if (!cardStats || cardStats.length === 0) return [];
-    
-    // Use a more efficient conversion that doesn't create new objects unnecessarily
-    return cardStats as Card[];
-  }, [cardStats]);
+    const trimmedDesc = appliedAdvanced.desc.trim();
+    if (trimmedDesc) {
+      params.desc = trimmedDesc;
+    }
 
-  // Use the card search hook for advanced filtering
-  const {
-    filters,
-    filteredCards: allFilteredCards,
-    filterOptions,
-    updateFilter,
-    clearFilters,
-    applyQuickFilter,
-    toggleMonsterType
-  } = useCardSearch(cardLibrary, deck.banlist);
+    if (appliedAdvanced.type) {
+      params.type = appliedAdvanced.type as CardsSearchParams['type'];
+    }
+    if (appliedAdvanced.attribute) {
+      params.attribute = appliedAdvanced.attribute as CardsSearchParams['attribute'];
+    }
 
-  // Update search filter when debounced query changes
-  useEffect(() => {
-    updateFilter('search', debouncedSearchQuery);
-  }, [debouncedSearchQuery, updateFilter]);
+    const numericMap: Array<[keyof CardsSearchParams, string]> = [
+      ['levelMin', appliedAdvanced.levelMin],
+      ['levelMax', appliedAdvanced.levelMax],
+      ['atkMin', appliedAdvanced.atkMin],
+      ['atkMax', appliedAdvanced.atkMax],
+      ['defMin', appliedAdvanced.defMin],
+      ['defMax', appliedAdvanced.defMax],
+    ];
 
-  // Update sort filters when they change
-  useEffect(() => {
-    updateFilter('sortBy', sortBy);
-    updateFilter('sortOrder', sortOrder);
-  }, [sortBy, sortOrder, updateFilter]);
-
-  // Handle keyboard shortcuts for filter panel
-  useEffect(() => {
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape' && showFilters) {
-        setShowFilters(false);
+    numericMap.forEach(([key, value]) => {
+      if (value) {
+        const parsed = parseInt(value, 10);
+        if (!Number.isNaN(parsed)) {
+          (params as Record<string, unknown>)[key as string] = parsed;
+        }
       }
-    };
+    });
 
-    document.addEventListener('keydown', handleKeyDown);
-    return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [showFilters]);
+    if (appliedAdvanced.pScale) {
+      const parsed = parseInt(appliedAdvanced.pScale, 10);
+      if (!Number.isNaN(parsed)) {
+        params.pScale = parsed;
+      }
+    }
 
-  // Normalize deck name for file export
-  const normalizeDeckName = (name: string) => {
-    return name
-      .toLowerCase()
-      .replace(/[^a-z0-9\s]/g, '') // Remove special characters
-      .replace(/\s+/g, '_') // Replace spaces with underscores
-      .trim() || 'deck'; // Fallback to 'deck' if empty
+    let raceFilter = '';
+    if (appliedAdvanced.type === 'Monster') {
+      raceFilter = appliedAdvanced.race.trim();
+    } else if (appliedAdvanced.type === 'Spell') {
+      raceFilter = appliedAdvanced.spellSubtype;
+    } else if (appliedAdvanced.type === 'Trap') {
+      raceFilter = appliedAdvanced.trapSubtype;
+    }
+
+    if (raceFilter) {
+      params.race = raceFilter;
+    }
+
+    return params;
+  }, [appliedAdvanced, basicQuery]);
+
+  useEffect(() => {
+    const trimmedQuery = basicQuery.trim();
+    const shouldSearch = trimmedQuery.length > 0 || activeAdvancedCount > 0;
+
+    if (!shouldSearch) {
+      clearSearch();
+      setCurrentPage(1);
+      return;
+    }
+
+    const timeout = setTimeout(() => {
+      searchCards(buildSearchParams());
+      setCurrentPage(1);
+    }, DEBOUNCE_DELAY);
+
+    return () => clearTimeout(timeout);
+  }, [basicQuery, activeAdvancedCount, buildSearchParams, searchCards, clearSearch]);
+
+  const handleBasicChange = (value: string) => {
+    setBasicQuery(value);
+    setCurrentPage(1);
   };
 
-  // Export to YDK function
-  const exportToYDK = useCallback(() => {
-    // Check if deck is empty
-    if (deck.mainDeck.length === 0 && deck.extraDeck.length === 0 && deck.sideDeck.length === 0) {
-      showToast('warning', 'Cannot export an empty deck. Add some cards first!');
-      return;
-    }
+  const handleClearQuery = () => {
+    setBasicQuery('');
+    setCurrentPage(1);
+  };
 
-    const lines: string[] = [];
-    
-    // Header
-    lines.push('#created by Omega Web Deck Builder');
-    lines.push(`#${deckName}`);
-    lines.push('#main');
-    
-    // Main deck cards
-    deck.mainDeck.forEach(({ card, quantity }) => {
-      for (let i = 0; i < quantity; i++) {
-        lines.push(card.id.toString());
-      }
-    });
-    
-    lines.push('#extra');
-    
-    // Extra deck cards
-    deck.extraDeck.forEach(({ card, quantity }) => {
-      for (let i = 0; i < quantity; i++) {
-        lines.push(card.id.toString());
-      }
-    });
-    
-    lines.push('!side');
-    
-    // Side deck cards
-    deck.sideDeck.forEach(({ card, quantity }) => {
-      for (let i = 0; i < quantity; i++) {
-        lines.push(card.id.toString());
-      }
-    });
-    
-    const ydkContent = lines.join('\n');
-    
-    // Create and download file
-    const normalizedName = normalizeDeckName(deckName);
-    const blob = new Blob([ydkContent], { type: 'text/plain' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `${normalizedName}.ydk`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-    
-    showToast('success', `YDK file "${normalizedName}.ydk" downloaded successfully!`, 'Export Complete');
-  }, [deck, deckName, showToast]);
+  const handleAdvancedFieldChange = (name: keyof AdvancedFilters, value: string) => {
+    setAdvancedValues((prev) => ({ ...prev, [name]: value }));
+  };
 
-  // Generate YDKE and Omega codes
-  const generateCodes = useCallback(async () => {
-    // Check if deck is empty
-    if (deck.mainDeck.length === 0 && deck.extraDeck.length === 0 && deck.sideDeck.length === 0) {
-      showToast('warning', 'Cannot generate codes for an empty deck. Add some cards first!');
-      return;
-    }
+  const handleDeckRegionChange = (value: DeckRegion) => {
+    setDeckRegion(value);
+    setCurrentPage(1);
+  };
 
-    setIsGeneratingCodes(true);
-    try {
-      // Prepare deck data for API
-      const deckData = {
-        main: deck.mainDeck.flatMap(({ card, quantity }) => Array(quantity).fill(card.id)),
-        extra: deck.extraDeck.flatMap(({ card, quantity }) => Array(quantity).fill(card.id)),
-        side: deck.sideDeck.flatMap(({ card, quantity }) => Array(quantity).fill(card.id))
+  const handleTypeChange = (value: CardCategory) => {
+    setAdvancedValues((prev) => {
+      const next: AdvancedFilters = {
+        ...prev,
+        type: value,
       };
 
-      const response = await api.main.encodeDeck(deckData);
-
-      if (response.ok && response.success && response.data) {
-        setGeneratedCodes({
-          ydke: response.data.ydkeUrl || '',
-          omega: response.data.code || ''
-        });
-        setShowCodesDialog(true);
-        showToast('success', 'Deck codes generated successfully!');
-      } else {
-        showToast('error', response.message || 'Failed to generate deck codes');
+      if (value !== 'Spell') {
+        next.spellSubtype = '';
       }
-    } catch (error) {
-      console.error('Generate codes error:', error);
-      showToast('error', 'Failed to generate deck codes');
-    } finally {
-      setIsGeneratingCodes(false);
-    }
-  }, [deck, showToast]);
 
-  // Export to Omega
-  const exportToOmega = useCallback(async () => {
-    // Check if deck is empty
-    if (deck.mainDeck.length === 0 && deck.extraDeck.length === 0 && deck.sideDeck.length === 0) {
-      showToast('warning', 'Cannot export an empty deck. Add some cards first!');
-      return;
-    }
+      if (value !== 'Trap') {
+        next.trapSubtype = '';
+      }
 
-    setIsExportingToOmega(true);
-    try {
-      // First generate the omega code
-      const deckData = {
-        main: deck.mainDeck.flatMap(({ card, quantity }) => Array(quantity).fill(card.id)),
-        extra: deck.extraDeck.flatMap(({ card, quantity }) => Array(quantity).fill(card.id)),
-        side: deck.sideDeck.flatMap(({ card, quantity }) => Array(quantity).fill(card.id))
+      if (value !== 'Monster') {
+        next.attribute = '';
+        next.levelMin = '';
+        next.levelMax = '';
+        next.atkMin = '';
+        next.atkMax = '';
+        next.defMin = '';
+        next.defMax = '';
+        next.monsterTypes = [];
+        next.race = '';
+        next.pScale = '';
+      }
+
+      return next;
+    });
+  };
+
+  const handleMonsterTypeToggle = (typeLabel: string) => {
+    setAdvancedValues((prev) => {
+      const exists = prev.monsterTypes.includes(typeLabel);
+      const nextTypes = exists
+        ? prev.monsterTypes.filter((type) => type !== typeLabel)
+        : [...prev.monsterTypes, typeLabel];
+
+      return {
+        ...prev,
+        monsterTypes: nextTypes,
+        pScale: nextTypes.includes('Pendulum') ? prev.pScale : '',
       };
+    });
+  };
 
-      const encodeResponse = await api.main.encodeDeck(deckData);
+  const handleAdvancedApply = () => {
+    setAppliedAdvanced(advancedValues);
+    setIsAdvancedOpen(false);
+    setCurrentPage(1);
+  };
 
-      if (encodeResponse.ok && encodeResponse.success && encodeResponse.data?.code) {
-        // Now add the deck to local server using the omega code
-        const normalizedName = normalizeDeckName(deckName);
-        const addDeckResponse = await api.external.localDeckServer.addDeck(normalizedName, encodeResponse.data.code);
+  const handleAdvancedReset = () => {
+    const defaults = createAdvancedDefaults();
+    setAdvancedValues(defaults);
+    setAppliedAdvanced(defaults);
+    setCurrentPage(1);
+  };
 
-        if (addDeckResponse.ok) {
-          showToast('success', `Deck "${normalizedName}" exported to Omega successfully!`);
-        } else {
-          showToast('error', addDeckResponse.message || 'Failed to export deck to Omega');
-        }
-      } else {
-        showToast('error', encodeResponse.message || 'Failed to generate Omega code');
-      }
-    } catch (error) {
-      console.error('Export to Omega error:', error);
-      showToast('error', 'Failed to export deck to Omega');
-    } finally {
-      setIsExportingToOmega(false);
-    }
-  }, [deck, deckName, showToast]);
-
-  // Check if any filters are currently active
-  const hasActiveFilters = useMemo(() => {
-    return filters.frameType || filters.type || filters.attribute ||
-      filters.race || filters.level !== null || filters.limitation ||
-      filters.monsterTypes.length > 0 || filters.spellSubtype ||
-      filters.pointsFilter || filters.atkMin !== null || filters.atkMax !== null ||
-      filters.defMin !== null || filters.defMax !== null || filters.pendulumScale !== null ||
-      filters.linkval !== null;
-  }, [filters]);
-
-  // Get filtered cards with display limit for performance
-  const filteredCards = useMemo(() => {
-    // Show cards if there's a search query OR if any filters are active
-    if (!debouncedSearchQuery.trim() && !hasActiveFilters) return [];
-
-    // Apply display limit for performance
-    return allFilteredCards.slice(0, displayLimit);
-  }, [allFilteredCards, debouncedSearchQuery, displayLimit, hasActiveFilters]);
-
-  // Calculate total Genesys points
-  const totalGenesysPoints = useMemo(() => {
-    if (deck.banlist !== 'TCG Genesys') return 0;
-
-    return [...deck.mainDeck, ...deck.extraDeck, ...deck.sideDeck]
-      .reduce((total, deckCard) => {
-        const cardPoints = getCardGenesysPoints(deckCard.card.name);
-        return total + (cardPoints * deckCard.quantity);
-      }, 0);
-  }, [deck.mainDeck, deck.extraDeck, deck.sideDeck, deck.banlist]);
-
-
-  // Handle card addition to active deck with validation and toasts
-  const handleCardAdd = useCallback((card: Card) => {
-    try {
-      // Check TCG Genesys restrictions
-      if (deck.banlist === 'TCG Genesys') {
-        const isLinkCard = card.frameType === 'link' || card.type.includes('Link');
-        const isPendulumCard = card.frameType === 'pendulum' || card.type.includes('Pendulum');
-
-        if (isLinkCard || isPendulumCard) {
-          showToast('error', `${card.name} cannot be added: Link and Pendulum cards are not allowed in TCG Genesys format`);
-          return;
-        }
-
-        // Check points limit for Genesys
-        const cardPoints = getCardGenesysPoints(card.name);
-        if (totalGenesysPoints + cardPoints > genesysPointsCap) {
-          showToast('warning', `Cannot add ${card.name}: Would exceed points limit (${totalGenesysPoints + cardPoints}/${genesysPointsCap})`);
-          return;
-        }
-      }
-
-      // Add card to deck
-      addCardToDeck(card, activeDeckTab === 'side');
-
-      const deckName = activeDeckTab === 'main' ? 'Main' : activeDeckTab === 'extra' ? 'Extra' : 'Side';
-      showToast('success', `${card.name} added to ${deckName} deck`);
-    } catch (error) {
-      showToast('error', `Error adding card: ${error instanceof Error ? error.message : 'Unknown error'}`);
-    }
-  }, [deck.banlist, totalGenesysPoints, genesysPointsCap, activeDeckTab, addCardToDeck, showToast]);
-
-  // Handle card removal from deck
-  const handleCardRemove = useCallback((card: Card, fromDeck: 'main' | 'extra' | 'side', doNotShowToast?: boolean) => {
-    try {
-      // Actually remove the card from the deck
-      removeCardFromDeck(card.id, fromDeck);
-
-      // Show toast notification (unless suppressed)
-      if (!doNotShowToast) {
-        const deckName = fromDeck === 'main' ? 'Main' : fromDeck === 'extra' ? 'Extra' : 'Side';
-        showToast('info', `${card.name} removed from ${deckName} deck`);
-      }
-    } catch (error) {
-      if (!doNotShowToast) {
-        showToast('error', `Error removing card: ${error instanceof Error ? error.message : 'Unknown error'}`);
-      }
-    }
-  }, [removeCardFromDeck, showToast]);
-
-  // Handle long press for card modal
-  const handleCardLongPress = useCallback((card: Card) => {
-    setSelectedCardModal(card);
-  }, []);
-
-  // Handle clear deck
-  const handleClearDeck = useCallback(() => {
-    if (deck.mainDeck.length === 0 && deck.extraDeck.length === 0 && deck.sideDeck.length === 0) {
-      showToast('info', 'Deck is already empty');
-      return;
-    }
-
-    if (window.confirm('Are you sure you want to clear the entire deck? This action cannot be undone.')) {
-      // Clear all deck sections efficiently
-      clearDeck();
-      showToast('success', 'Deck cleared successfully');
-    }
-  }, [deck, clearDeck, showToast]);
-
-  // Parse YDK file content
-  const parseYDKFile = useCallback((content: string) => {
-    const lines = content.split('\n').map(line => line.trim()).filter(line => line);
-    const deck: { main: number[], extra: number[], side: number[] } = { main: [], extra: [], side: [] };
-    let currentSection: 'main' | 'extra' | 'side' | '' = '';
-
-    for (const line of lines) {
-      if (line.startsWith('#') && !line.includes('main') && !line.includes('extra') && !line.includes('side')) {
-        continue; // Skip comments and metadata
-      }
-
-      if (line === '#main') {
-        currentSection = 'main';
-        continue;
-      } else if (line === '#extra') {
-        currentSection = 'extra';
-        continue;
-      } else if (line === '!side') {
-        currentSection = 'side';
-        continue;
-      }
-
-      // Parse card ID
-      const cardId = parseInt(line);
-      if (!isNaN(cardId) && (currentSection === 'main' || currentSection === 'extra' || currentSection === 'side')) {
-        deck[currentSection].push(cardId);
-      }
-    }
-
-    return deck;
-  }, []);
-
-  // Handle YDK file upload
-  const handleYDKFileUpload = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      const content = e.target?.result as string;
-      if (content) {
-        try {
-          const parsedDeck = parseYDKFile(content);
-          clearDeck();
-
-          let cardsAdded = 0;
-          let cardsNotFound = 0;
-
-          const addCardsToDeck = (cardIds: number[], deckType: 'main' | 'extra' | 'side') => {
-            const cardCounts: { [id: number]: number } = {};
-
-            cardIds.forEach(id => {
-              cardCounts[id] = (cardCounts[id] || 0) + 1;
-            });
-            Object.entries(cardCounts).forEach(([cardIdStr, quantity]) => {
-              const cardId = parseInt(cardIdStr);
-              const card = cardLibrary.find(c => c.id === cardId);
-
-              if (card) {
-                // Add the card with the correct quantity (suppress toasts during import)
-                for (let i = 0; i < quantity; i++) {
-                  const forceToSideDeck = deckType === 'side';
-                  addCardToDeck(card, forceToSideDeck);
-                  cardsAdded++;
-                }
-              } else {
-                cardsNotFound++;
-                console.warn(`Card with ID ${cardId} not found in card library`);
-              }
-            });
-          };
-
-          // Add cards from each section
-          addCardsToDeck(parsedDeck.main, 'main');
-          addCardsToDeck(parsedDeck.extra, 'extra');
-          addCardsToDeck(parsedDeck.side, 'side');
-
-          // Show success message with stats
-          if (cardsAdded > 0) {
-            let message = `YDK file loaded! Added ${cardsAdded} cards to deck.`;
-            if (cardsNotFound > 0) {
-              message += ` ${cardsNotFound} cards not found in library.`;
-            }
-            showToast('success', message);
-          } else {
-            showToast('warning', 'No cards were added. Check if the card IDs exist in the library.');
-          }
-
-          // Close the import dialog
-          setShowImportDialog(false);
-          setImportCode('');
-        } catch (error) {
-          showToast('error', 'Failed to parse YDK file');
-        }
-      }
-    };
-    reader.readAsText(file);
-
-    // Reset file input
-    event.target.value = '';
-  }, [parseYDKFile, showToast, cardLibrary, addCardToDeck]);
-
-  // Handle deck import
-  const handleImportDeck = useCallback(async () => {
-    if (!importCode.trim()) {
-      showToast('error', 'Please enter a deck code or load a YDK file');
-      return;
-    }
-
-    setIsImporting(true);
-    try {
-      const response = await api.main.decodeDeck(importCode.trim());
-
-      if (response.ok && response.success) {
-        const deckData = response.data;
-
-        // Clear existing deck before importing
-        clearDeck();
-
-        let cardsAdded = 0;
-        let cardsNotFound = 0;
-
-        // Helper function to add cards from deck sections
-        const addCardsFromSection = (cards: any[], deckType: 'main' | 'extra' | 'side') => {
-          cards.forEach((cardData: any) => {
-            const card = cardLibrary.find(c => c.id === cardData.id);
-
-            if (card) {
-              // Add the card with the correct quantity
-              for (let i = 0; i < cardData.qtd; i++) {
-                const forceToSideDeck = deckType === 'side';
-                addCardToDeck(card, forceToSideDeck);
-                cardsAdded++;
-              }
-            } else {
-              cardsNotFound += cardData.qtd;
-              console.warn(`Card with ID ${cardData.id} (${cardData.name}) not found in card library`);
-            }
-          });
-        };
-
-        // Add cards from each section
-        if (deckData.mainDeck) {
-          addCardsFromSection(deckData.mainDeck, 'main');
-        }
-        if (deckData.extraDeck) {
-          addCardsFromSection(deckData.extraDeck, 'extra');
-        }
-        if (deckData.sideDeck) {
-          addCardsFromSection(deckData.sideDeck, 'side');
-        }
-
-        // Show success message with stats
-        if (cardsAdded > 0) {
-          let message = `Deck imported successfully! Added ${cardsAdded} cards to deck.`;
-          if (cardsNotFound > 0) {
-            message += ` ${cardsNotFound} cards not found in library.`;
-          }
-          showToast('success', message);
-        } else {
-          showToast('warning', 'No cards were added. Check if the card IDs exist in the library.');
-        }
-
-        setShowImportDialog(false);
-        setImportCode('');
-      } else {
-        showToast('error', response.message || response.data?.message || 'Failed to import deck');
-      }
-    } catch (error) {
-      showToast('error', `Import failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
-    } finally {
-      setIsImporting(false);
-    }
-  }, [importCode, showToast, cardLibrary, addCardToDeck]);
-
-  if (isLoading) {
-    return <DeckEditorSkeleton />;
-  }
-
-  if (error) {
-    return (
-      <div className="p-8">
-        <div className="flex items-center justify-center h-64">
-          <div className="text-red-400 text-xl">{t('deck_editor.error_prefix')}: {error}</div>
-        </div>
-      </div>
+  useEffect(() => {
+    warningsShownRef.current = warningsShownRef.current.filter((warning) =>
+      deckWarnings.includes(warning)
     );
-  }
 
-  return (
-    <div className="mt-20 min-h-screen bg-gradient-to-b from-zinc-950 to-zinc-900">
-      <div className="bg-zinc-900 border-b border-zinc-700 shadow-lg">
-        <div className="max-w-7xl mx-auto px-4 py-3">
-          <input
-            type="text"
-            value={deckName}
-            onChange={(e) => setDeckName(e.target.value)}
-            className="bg-zinc-800 my-2 w-full border border-zinc-600 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-            placeholder={t('deck_editor.deck_name_placeholder')}
-          />
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-            <div className="flex items-center gap-3 flex-wrap">
-              <button 
-                onClick={exportToYDK}
-                className="px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition-colors"
-              >
-                {t('deck_editor.export_ydk')}
-              </button>
-              <button
-                onClick={generateCodes}
-                disabled={isGeneratingCodes}
-                className="px-3 py-2 bg-purple-600 hover:bg-purple-700 disabled:bg-purple-800 disabled:opacity-50 text-white rounded-lg text-sm font-medium transition-colors flex items-center gap-2"
-              >
-                {isGeneratingCodes ? (
-                  <Icon icon="mdi:loading" className="text-sm animate-spin" />
-                ) : (
-                  <Icon icon="mdi:code-tags" className="text-sm" />
-                )}
-                {t('deck_editor.generate_codes')}
-              </button>
-              <button
-                onClick={exportToOmega}
-                disabled={isExportingToOmega}
-                className="px-3 py-2 bg-orange-600 hover:bg-orange-700 disabled:bg-orange-800 disabled:opacity-50 text-white rounded-lg text-sm font-medium transition-colors flex items-center gap-2"
-              >
-                {isExportingToOmega ? (
-                  <Icon icon="mdi:loading" className="text-sm animate-spin" />
-                ) : (
-                  <Icon icon="mdi:upload" className="text-sm" />
-                )}
-                {t('deck_editor.export_to_omega')}
-              </button>
-              <button
-                onClick={() => setShowImportDialog(true)}
-                className="px-3 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg text-sm font-medium transition-colors flex items-center gap-2"
-              >
-                <Icon icon="mdi:import" className="text-sm" />
-                {t('deck_editor.import')}
-              </button>
-              <button
-                onClick={handleClearDeck}
-                className="px-3 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg text-sm font-medium transition-colors flex items-center gap-2"
-              >
-                <Icon icon="mdi:delete" className="text-sm" />
-                {t('deck_editor.clear')}
-              </button>
-            </div>
+    deckWarnings.forEach((warning) => {
+      if (!warningsShownRef.current.includes(warning)) {
+        showWarning(warning);
+        warningsShownRef.current.push(warning);
+      }
+    });
+  }, [deckWarnings, showWarning]);
 
-            <div className="flex items-center gap-3">
-              <select
-                value={deck.banlist}
-                onChange={async (e) => await changeBanlist(e.target.value as any)}
-                className="bg-zinc-800 border border-zinc-600 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
-                <option value="TCG">TCG</option>
-                <option value="OCG">OCG</option>
-                <option value="TCG Genesys">TCG Genesys</option>
-              </select>
+  useEffect(() => {
+    const isMainIncomplete = deckTotals.main > 0 && deckTotals.main < MIN_MAIN_DECK;
+    if (isMainIncomplete && !mainDeckToastShownRef.current) {
+      mainDeckToastShownRef.current = true;
+      showWarning(t('deck_editor.limits.main_range', { min: MIN_MAIN_DECK }));
+    }
 
-              {deck.banlist === 'TCG Genesys' && (
-                <div className="flex items-center gap-2">
-                  <input
-                    type="number"
-                    value={genesysPointsCap}
-                    onChange={(e) => setGenesysPointsCap(parseInt(e.target.value) || 100)}
-                    className="bg-zinc-800 border border-zinc-600 rounded-lg px-2 py-2 text-white text-sm w-16 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    min="1"
-                    max="999"
-                  />
-                  <span className="text-zinc-300 text-sm font-medium">
-                    {totalGenesysPoints}/{genesysPointsCap}
-                  </span>
-                </div>
-              )}
+    if (!isMainIncomplete && deckTotals.main >= MIN_MAIN_DECK) {
+      mainDeckToastShownRef.current = false;
+    }
+  }, [deckTotals.main, showWarning, t]);
 
-              <button
-                onClick={() => setShowInfoModal(true)}
-                className="p-2 text-zinc-400 hover:text-white transition-colors"
-                title={t('deck_editor.help')}
-              >
-                <Icon icon="mdi:help-circle" className="text-lg" />
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
+  useEffect(() => {
+    if (error) {
+      showError(error);
+    }
+  }, [error, showError]);
 
-      <div className="sticky top-0 z-40 bg-zinc-900 border-b border-zinc-700 shadow-lg">
-        <div className="max-w-7xl mx-auto px-4">
-          <div className="flex border-b border-zinc-700">
-            <button
-              onClick={() => setActiveDeckTab('main')}
-              className={`px-4 py-3 text-sm font-medium border-b-2 transition-colors ${activeDeckTab === 'main'
-                ? 'border-cyan-400 text-cyan-400'
-                : 'border-transparent text-zinc-400 hover:text-zinc-300'
-                }`}
-            >
-              Main ({deckStats.cardTypes.main})
-            </button>
-            <button
-              onClick={() => setActiveDeckTab('extra')}
-              className={`px-4 py-3 text-sm font-medium border-b-2 transition-colors ${activeDeckTab === 'extra'
-                ? 'border-green-400 text-green-400'
-                : 'border-transparent text-zinc-400 hover:text-zinc-300'
-                }`}
-            >
-              Extra ({deckStats.cardTypes.extra})
-            </button>
-            <button
-              onClick={() => setActiveDeckTab('side')}
-              className={`px-4 py-3 text-sm font-medium border-b-2 transition-colors ${activeDeckTab === 'side'
-                ? 'border-orange-400 text-orange-400'
-                : 'border-transparent text-zinc-400 hover:text-zinc-300'
-                }`}
-            >
-              Side ({deckStats.cardTypes.side})
-            </button>
-          </div>
+  const getAllowedCopiesForCard = useCallback(
+    (card: Card) => {
+      if (deckRegion === 'Genesys') {
+        return COPY_LIMITS.UNLIMITED;
+      }
 
-          <div className="py-4">
-            <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-thin scrollbar-deck">
-              {activeDeckTab === 'main' && getSortedExpandedCards(deck.mainDeck).map((card, index) => (
-                <div
-                  key={`${card.id}-${index}`}
-                  className="flex-shrink-0 relative group cursor-pointer"
-                  onClick={() => handleCardRemove(card, 'main')}
-                  onContextMenu={(e) => {
-                    e.preventDefault();
-                    handleCardLongPress(card);
-                  }}
-                >
-                  <img
-                    src={card.card_images[0]?.image_url_small}
-                    alt={card.name}
-                    className="w-16 h-24 object-cover rounded border-2 border-cyan-400/50 hover:border-cyan-400 transition-colors"
-                  />
-                  
-                  {/* Genesys Points Badge */}
-                  {deck.banlist === 'TCG Genesys' && getCardGenesysPoints(card.name) > 0 && (
-                    <div className="absolute top-1 left-1 bg-blue-600 text-white w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold shadow-lg border border-white">
-                      {getCardGenesysPoints(card.name)}
-                    </div>
-                  )}
-                </div>
-              ))}
+      const status = getBanStatusForCard(card);
+      if (status === 0) return COPY_LIMITS.FORBIDDEN;
+      if (status === 1) return COPY_LIMITS.LIMITED;
+      if (status === 2) return COPY_LIMITS.SEMI_LIMITED;
+      return COPY_LIMITS.UNLIMITED;
+    },
+    [deckRegion, getBanStatusForCard]
+  );
 
-              {activeDeckTab === 'extra' && getSortedExpandedCards(deck.extraDeck).map((card, index) => (
-                <div
-                  key={`${card.id}-${index}`}
-                  className="flex-shrink-0 relative group cursor-pointer"
-                  onClick={() => handleCardRemove(card, 'extra')}
-                  onContextMenu={(e) => {
-                    e.preventDefault();
-                    handleCardLongPress(card);
-                  }}
-                >
-                  <img
-                    src={card.card_images[0]?.image_url_small}
-                    alt={card.name}
-                    className="w-16 h-24 object-cover rounded border-2 border-green-400/50 hover:border-green-400 transition-colors"
-                  />
-                  
-                  {/* Genesys Points Badge */}
-                  {deck.banlist === 'TCG Genesys' && getCardGenesysPoints(card.name) > 0 && (
-                    <div className="absolute top-1 left-1 bg-blue-600 text-white w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold shadow-lg border border-white">
-                      {getCardGenesysPoints(card.name)}
-                    </div>
-                  )}
-                </div>
-              ))}
+  const showCopyLimitToast = useCallback(
+    (card: Card) => {
+      const status = deckRegion === 'Genesys' ? null : getBanStatusForCard(card);
+      const regionLabel = t(`deck_editor.filters.region_${deckRegion.toLowerCase()}`);
+      const name = getCardDisplayName(card);
 
-              {activeDeckTab === 'side' && getSortedExpandedCards(deck.sideDeck).map((card, index) => (
-                <div
-                  key={`${card.id}-${index}`}
-                  className="flex-shrink-0 relative group cursor-pointer"
-                  onClick={() => handleCardRemove(card, 'side')}
-                  onContextMenu={(e) => {
-                    e.preventDefault();
-                    handleCardLongPress(card);
-                  }}
-                >
-                  <img
-                    src={card.card_images[0]?.image_url_small}
-                    alt={card.name}
-                    className="w-16 h-24 object-cover rounded border-2 border-orange-400/50 hover:border-orange-400 transition-colors"
-                  />
-                  
-                  {/* Genesys Points Badge */}
-                  {deck.banlist === 'TCG Genesys' && getCardGenesysPoints(card.name) > 0 && (
-                    <div className="absolute top-1 left-1 bg-blue-600 text-white w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold shadow-lg border border-white">
-                      {getCardGenesysPoints(card.name)}
-                    </div>
-                  )}
-                </div>
-              ))}
+      if (status === 0) {
+        showError(
+          t('deck_editor.banlist.forbidden_toast', {
+            name,
+            region: regionLabel,
+          })
+        );
+        return;
+      }
 
-              {((activeDeckTab === 'main' && deck.mainDeck.length === 0) ||
-                (activeDeckTab === 'extra' && deck.extraDeck.length === 0) ||
-                (activeDeckTab === 'side' && deck.sideDeck.length === 0)) && (
-                  <div className="flex-shrink-0 w-16 h-24 border-2 border-dashed border-zinc-600 rounded flex items-center justify-center">
-                    <Icon icon="mdi:plus" className="text-zinc-500 text-xl" />
-                  </div>
-                )}
-            </div>
-          </div>
-        </div>
-      </div>
+      if (status === 1) {
+        showWarning(
+          t('deck_editor.banlist.limited_toast', {
+            name,
+            region: regionLabel,
+          })
+        );
+        return;
+      }
 
-      <div className="bg-zinc-800 border-b border-zinc-700">
-        <div className="max-w-7xl mx-auto px-4 py-4">
-          <div className="flex flex-col sm:flex-row gap-3">
-            <div className="flex-1 relative">
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder={t('deck_editor.search_input_placeholder')}
-                className="w-full bg-zinc-700 border border-zinc-600 rounded-lg pl-10 pr-12 py-2 text-white placeholder-zinc-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-              <Icon icon="mdi:magnify" className="absolute left-3 top-1/2 transform -translate-y-1/2 text-zinc-400" />
-              {isSearching && (
-                <Icon icon="mdi:loading" className="absolute right-3 top-1/2 transform -translate-y-1/2 text-zinc-400 animate-spin" />
-              )}
-            </div>
+      if (status === 2) {
+        showWarning(
+          t('deck_editor.banlist.semi_limited_toast', {
+            name,
+            region: regionLabel,
+          })
+        );
+        return;
+      }
 
-            <div className="grid grid-cols-3 gap-2">
-              <button
-                onClick={() => setShowFilters(!showFilters)}
-                className={`px-4 py-2 rounded-lg transition-colors flex items-center gap-2 relative ${hasActiveFilters
-                  ? 'bg-purple-600 hover:bg-purple-700 text-white'
-                  : 'bg-zinc-700 hover:bg-zinc-600 text-white'
-                  }`}
-              >
-                <Icon icon="mdi:filter" />
-                {t('deck_editor.filters')}
-                {hasActiveFilters && (
-                  <div className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full border-2 border-zinc-800" />
-                )}
-              </button>
+      showWarning(
+        t('deck_editor.builder.copy_limit', {
+          limit: COPY_LIMITS.UNLIMITED,
+        })
+      );
+    },
+    [deckRegion, getBanStatusForCard, getCardDisplayName, showError, showWarning, t]
+  );
 
-              <select
-                value={sortBy}
-                onChange={(e) => setSortBy(e.target.value)}
-                className="bg-zinc-700 border border-zinc-600 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
-                <option value="name">{t('deck_editor.sort_name')}</option>
-                <option value="type">{t('deck_editor.sort_type')}</option>
-                <option value="level">{t('deck_editor.sort_level')}</option>
-                <option value="atk">{t('deck_editor.sort_atk')}</option>
-                <option value="def">{t('deck_editor.sort_def')}</option>
-                {deck.banlist === 'TCG Genesys' && <option value="points">{t('deck_editor.sort_points')}</option>}
-              </select>
+  const exceedsGenesysCap = useCallback(
+    (deckState: Record<DeckSection, DeckEntry[]>, card: Card, copiesToAdd: number) => {
+      if (deckRegion !== 'Genesys' || copiesToAdd <= 0) {
+        return false;
+      }
 
-              <select
-                value={sortOrder}
-                onChange={(e) => setSortOrder(e.target.value)}
-                className="bg-zinc-700 border border-zinc-600 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
-                <option value="asc">A-Z</option>
-                <option value="desc">Z-A</option>
-              </select>
-            </div>
-          </div>
-        </div>
-      </div>
+      const currentPoints = calculateDeckGenesysPoints(deckState);
+      const addedPoints = getGenesysPointsForCard(card) * copiesToAdd;
 
-      <div className="flex-1">
-        <div className="max-w-7xl mx-auto px-4 py-6">
-          {filteredCards.length === 0 && allFilteredCards.length === 0 && !isSearching ? (
-            <div className="flex flex-col items-center justify-center h-64 text-zinc-500">
-              <Icon icon="mdi:magnify" className="text-6xl mb-4" />
-              <h3 className="text-xl font-medium mb-2">{t('deck_editor.search_empty_title')}</h3>
-              <p className="text-zinc-400">{t('deck_editor.search_empty_subtitle')}</p>
-            </div>
-          ) : isSearching ? (
-            <div className="flex flex-col items-center justify-center h-64 text-zinc-500">
-              <Icon icon="mdi:loading" className="text-6xl mb-4 animate-spin" />
-              <h3 className="text-xl font-medium mb-2">{t('deck_editor.search_loading_title')}</h3>
-              <p className="text-zinc-400">{t('deck_editor.search_loading_subtitle')}</p>
-            </div>
-          ) : (
-            <>
-              {filteredCards.length > 0 && allFilteredCards.length > 0 && <div className="mb-4">
-                <h3 className="text-lg font-medium text-white">
-                  {t('deck_editor.search_results_title', { count: allFilteredCards.length })}
-                </h3>
-                <p className="text-sm text-zinc-400">
-                  {t('deck_editor.search_results_hint', { deck: activeDeckTab })}
-                </p>
-              </div>}
+      if (currentPoints + addedPoints > GENESYS_POINTS_CAP) {
+        showError(
+          t('deck_editor.genesys.limit_toast', {
+            name: getCardDisplayName(card),
+            cap: GENESYS_POINTS_CAP,
+            used: currentPoints,
+          })
+        );
+        return true;
+      }
 
-              <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 xl:grid-cols-10 gap-3">
-                {filteredCards.map((card) => (
-                  <CardItem
-                    key={card.id}
-                    card={card}
-                    banlist={deck.banlist}
-                    onAdd={handleCardAdd}
-                    onHover={handleCardHover}
-                    onLongPress={handleCardLongPress}
-                    getCardGenesysPoints={getCardGenesysPoints}
-                  />
-                ))}
-              </div>
+      return false;
+    },
+    [calculateDeckGenesysPoints, deckRegion, getCardDisplayName, getGenesysPointsForCard, showError, t]
+  );
 
-              {filteredCards.length === 0 && allFilteredCards.length === 0 && (
-                <div className="flex flex-col items-center justify-center h-32 text-zinc-500">
-                  <Icon icon="mdi:card-search" className="text-4xl mb-2" />
-                  <p>{t('deck_editor.no_results_title')}</p>
-                  <p className="text-xs text-zinc-600 mt-1">{t('deck_editor.no_results_subtitle')}</p>
-                </div>
-              )}
+  const addCardToSection = (card: Card, sectionOverride?: DeckSection) => {
+    const section = sectionOverride || (isExtraDeckCard(card) ? 'extra' : 'main');
 
-              {allFilteredCards.length > displayLimit && (debouncedSearchQuery.trim() || hasActiveFilters) && (
-                <div className="flex justify-center mt-6">
-                  <button
-                    onClick={() => setDisplayLimit(prev => prev + 50)}
-                    className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors flex items-center gap-2"
-                  >
-                    <Icon icon="mdi:plus" />
-                    {t('deck_editor.load_more', { shown: filteredCards.length, total: allFilteredCards.length })}
-                  </button>
-                </div>
-              )}
-            </>
-          )}
-        </div>
-      </div>
+    if (deckTotals[section] >= SECTION_LIMITS[section]) {
+      showWarning(
+        t('deck_editor.builder.limit_reached', {
+          section: t(`deck_editor.builder.section_${section}`),
+        })
+      );
+      return;
+    }
 
-      <DeckBuilderInfoModal
-        isOpen={showInfoModal}
-        onClose={() => setShowInfoModal(false)}
+    const allowedCopies = getAllowedCopiesForCard(card);
+    if (allowedCopies === COPY_LIMITS.FORBIDDEN) {
+      showCopyLimitToast(card);
+      return;
+    }
+
+    setDeck((prev) => {
+      const sectionEntries = prev[section];
+      const existingIndex = sectionEntries.findIndex((entry) => entry.card.id === card.id);
+
+      if (existingIndex !== -1) {
+        const existingEntry = sectionEntries[existingIndex];
+        if (existingEntry.count >= allowedCopies) {
+          showCopyLimitToast(card);
+          return prev;
+        }
+
+        if (exceedsGenesysCap(prev, card, 1)) {
+          return prev;
+        }
+
+        const updatedSection = [...sectionEntries];
+        updatedSection[existingIndex] = {
+          ...existingEntry,
+          count: existingEntry.count + 1,
+        };
+        return { ...prev, [section]: updatedSection };
+      }
+
+      if (exceedsGenesysCap(prev, card, 1)) {
+        return prev;
+      }
+
+      const updatedSection = [...sectionEntries, { card, count: 1 }];
+      return { ...prev, [section]: updatedSection };
+    });
+  };
+
+  const updateCardCount = (cardId: number, section: DeckSection, delta: number) => {
+    setDeck((prev) => {
+      const sectionEntries = prev[section];
+      const entryIndex = sectionEntries.findIndex((entry) => entry.card.id === cardId);
+      if (entryIndex === -1) return prev;
+
+      const updatedSection = [...sectionEntries];
+      const current = updatedSection[entryIndex];
+      const allowedCopies = getAllowedCopiesForCard(current.card);
+      const newCount = current.count + delta;
+
+      if (delta > 0 && newCount > allowedCopies) {
+        showCopyLimitToast(current.card);
+        return prev;
+      }
+
+      if (delta > 0 && exceedsGenesysCap(prev, current.card, delta)) {
+        return prev;
+      }
+
+      if (newCount <= 0) {
+        updatedSection.splice(entryIndex, 1);
+      } else if (newCount <= allowedCopies) {
+        updatedSection[entryIndex] = { ...current, count: newCount };
+      }
+
+      return { ...prev, [section]: updatedSection };
+    });
+  };
+
+  const clearDeck = () => {
+    setDeck(createEmptyDeck());
+  };
+
+  const handlePageChange = (direction: number, totalPages: number) => {
+    if (!totalPages) return;
+    const nextPage = currentPage + direction;
+    if (nextPage < 1 || nextPage > totalPages) return;
+    setCurrentPage(nextPage);
+  };
+
+  const deckEntries = deck[activeDeckTab];
+
+  const filteredCards = useMemo(() => {
+    if (appliedAdvanced.type === 'Monster' && appliedAdvanced.monsterTypes.length > 0) {
+      const selectedTypes = appliedAdvanced.monsterTypes;
+      return cards.filter((card) => {
+        const tags = card.type_tags || [];
+        return selectedTypes.some((selected) => tags.includes(selected));
+      });
+    }
+    return cards;
+  }, [cards, appliedAdvanced.type, appliedAdvanced.monsterTypes]);
+
+  const totalResults = filteredCards.length;
+  const totalPages = totalResults === 0 ? 1 : Math.ceil(totalResults / CARDS_PER_PAGE);
+
+  useEffect(() => {
+    if (currentPage > totalPages) {
+      setCurrentPage(totalPages);
+    }
+  }, [currentPage, totalPages]);
+
+  const paginatedCards = useMemo(() => {
+    const start = (currentPage - 1) * CARDS_PER_PAGE;
+    return filteredCards.slice(start, start + CARDS_PER_PAGE);
+  }, [filteredCards, currentPage]);
+
+  const renderAdvancedNumberInput = (
+    labelKey: string,
+    name: keyof AdvancedFilters,
+    placeholderKey: string
+  ) => (
+    <div className="space-y-2">
+      <label className="text-sm text-gray-400">{t(labelKey)}</label>
+      <input
+        type="number"
+        value={advancedValues[name]}
+        onChange={(event) => handleAdvancedFieldChange(name, event.target.value)}
+        placeholder={t(placeholderKey)}
+        className="w-full px-4 py-2 bg-black border border-zinc-800 rounded-md text-white placeholder-gray-500 focus:outline-none focus:border-zinc-600"
       />
+    </div>
+  );
 
-      {selectedCardModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-          <div className="bg-zinc-900 rounded-2xl border border-zinc-700 shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto scrollbar-thin">
-            <div className="p-6">
-              <div className="flex items-start gap-6">
-                <img
-                  src={selectedCardModal.card_images[0]?.image_url}
-                  alt={selectedCardModal.name}
-                  className="w-64 h-auto object-cover rounded-lg border border-zinc-600"
-                />
-                <div className="flex-1">
-                  <div className="flex items-start justify-between mb-4">
-                    <h2 className="text-2xl font-bold text-white">{selectedCardModal.name}</h2>
-                    <button
-                      onClick={() => setSelectedCardModal(null)}
-                      className="p-2 text-zinc-400 hover:text-white transition-colors"
-                    >
-                      <Icon icon="mdi:close" className="text-xl" />
-                    </button>
-                  </div>
+  const banlistStatusConfig: Record<BanStatus, { icon: string; bg: string; text: string; labelKey: string }> = {
+    0: {
+      icon: 'tabler:ban',
+      bg: 'bg-rose-600',
+      text: 'text-white',
+      labelKey: 'deck_editor.banlist.forbidden',
+    },
+    1: {
+      icon: 'bi:1-circle',
+      bg: 'bg-amber-400',
+      text: 'text-black',
+      labelKey: 'deck_editor.banlist.limited',
+    },
+    2: {
+      icon: 'bi:2-circle',
+      bg: 'bg-yellow-300',
+      text: 'text-black',
+      labelKey: 'deck_editor.banlist.semi_limited',
+    },
+  };
 
-                  <div className="space-y-3 text-sm">
-                    <div>
-                      <span className="text-zinc-400">Type:</span>
-                      <span className="text-white ml-2">{selectedCardModal.humanReadableCardType}</span>
-                    </div>
+  const renderCardConstraintBadge = useCallback(
+    (card: Card) => {
+      if (deckRegion === 'Genesys' && card.banlist_data?.genesys) {
+        return (
+          <div className="absolute top-2 left-2 px-2.5 py-1 rounded-full bg-emerald-400/90 text-black text-xs font-semibold shadow-md">
+            {t('deck_editor.genesys.points_badge', { points: card.banlist_data.genesys.value })}
+          </div>
+        );
+      }
 
-                    {selectedCardModal.atk !== undefined && (
-                      <div>
-                        <span className="text-zinc-400">ATK/DEF:</span>
-                        <span className="text-white ml-2">{selectedCardModal.atk}/{selectedCardModal.def}</span>
-                      </div>
-                    )}
+      const status = getBanStatusForCard(card);
+      if (status === null) {
+        return null;
+      }
 
-                    {selectedCardModal.level && (
-                      <div>
-                        <span className="text-zinc-400">Level:</span>
-                        <span className="text-white ml-2">{selectedCardModal.level}</span>
-                      </div>
-                    )}
+      const config = banlistStatusConfig[status];
+      return (
+        <div className={`absolute top-2 left-2 w-9 h-9 rounded-full flex items-center justify-center shadow-md ${config.bg}`}>
+          <Icon icon={config.icon} className={`text-xl ${config.text}`} />
+          <span className="sr-only">{t(config.labelKey)}</span>
+        </div>
+      );
+    },
+    [banlistStatusConfig, deckRegion, getBanStatusForCard, getGenesysPointsForCard, t]
+  );
 
-                    {deck.banlist === 'TCG Genesys' && (
-                      <div>
-                        <span className="text-zinc-400">Genesys Points:</span>
-                        <span className="text-blue-400 ml-2 font-bold">{getCardGenesysPoints(selectedCardModal.name)}</span>
-                      </div>
-                    )}
-
-                    <div>
-                      <span className="text-zinc-400">Description:</span>
-                      <p className="text-white mt-2 leading-relaxed">{selectedCardModal.desc}</p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
+  const renderSkeletonGrid = (count = CARDS_PER_PAGE) => (
+    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+      {Array.from({ length: count }).map((_, index) => (
+        <div key={`skeleton-${index}`} className="space-y-2">
+          <div className="relative aspect-4/6 rounded-xl overflow-hidden bg-zinc-800 animate-pulse" />
+          <div className="flex gap-2">
+            <div className="flex-1 h-10 rounded-lg bg-zinc-800 animate-pulse" />
+            <div className="w-20 h-10 rounded-lg bg-zinc-800 animate-pulse" />
           </div>
         </div>
-      )}
-
-      {showFilters && (
-        <>
-          {/* Backdrop with blur effect */}
-          <div
-            className="fixed inset-0 z-40 bg-black/30 backdrop-blur-sm"
-            onClick={() => setShowFilters(false)}
-          />
-
-          {/* Blur overlay for main content */}
-          <div className="fixed inset-0 z-30 pointer-events-none">
-            <div className="absolute inset-0 backdrop-blur-sm bg-black/10" />
-          </div>
-
-          <div className={`
-            fixed z-50 bg-zinc-900 border border-purple-500/30
-            
-            /* Mobile: Fullscreen */
-            inset-0 lg:inset-auto
-            
-            /* Desktop: Side Panel */
-            lg:fixed lg:top-0 lg:right-0 lg:h-full lg:w-96 lg:max-w-[90vw]
-            
-            /* Animations */
-            transform transition-transform duration-300 ease-in-out
-            ${showFilters ? 'translate-x-0' : 'translate-x-full lg:translate-x-full'}
-            
-            /* Styling */
-            shadow-2xl overflow-y-auto scrollbar-thin scrollbar-purple
-          `}>
-            <div className="lg:hidden sticky top-0 z-10 bg-zinc-900 border-b border-zinc-700 p-4">
-              <div className="flex items-center justify-between">
-                <h2 className="text-lg font-semibold text-white">Advanced Filters</h2>
-                <button
-                  onClick={() => setShowFilters(false)}
-                  className="p-2 text-zinc-400 hover:text-white transition-colors"
-                >
-                  <Icon icon="mdi:close" className="text-xl" />
-                </button>
-              </div>
-            </div>
-
-            {/* Desktop Header with X button */}
-            <div className="hidden lg:block sticky top-0 z-10 bg-zinc-900 border-b border-zinc-700 p-4">
-              <div className="flex items-center justify-between">
-                <h2 className="text-lg font-semibold text-white">Advanced Filters</h2>
-                <button
-                  onClick={() => setShowFilters(false)}
-                  className="p-2 text-zinc-400 hover:text-white transition-colors rounded-lg hover:bg-zinc-800"
-                >
-                  <Icon icon="mdi:close" className="text-xl" />
-                </button>
-              </div>
-            </div>
-
-            <div className="p-4 lg:p-6">
-              <CardFiltersComponent
-                filters={filters}
-                filterOptions={filterOptions}
-                currentBanlist={deck.banlist}
-                onFilterChange={updateFilter}
-                onClearFilters={clearFilters}
-                onQuickFilter={applyQuickFilter}
-                onToggleMonsterType={toggleMonsterType}
-                changeBanlistComponent={
-                  <select
-                    value={deck.banlist}
-                    onChange={async (e) => await changeBanlist(e.target.value as any)}
-                    className="bg-zinc-800 border border-zinc-600 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  >
-                    <option value="TCG">TCG</option>
-                    <option value="OCG">OCG</option>
-                    <option value="TCG Genesys">TCG Genesys</option>
-                  </select>
-                }
-              />
-            </div>
-
-            <div className="lg:hidden sticky bottom-0 z-10 bg-zinc-900 border-t border-zinc-700 p-4">
-              <button
-                onClick={() => setShowFilters(false)}
-                className="w-full px-4 py-3 bg-purple-600 hover:bg-purple-700 text-white rounded-lg font-medium transition-colors"
-              >
-                Apply Filters
-              </button>
-            </div>
-          </div>
-        </>
-      )}
-
-      {showImportDialog && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center">
-          <div
-            className="absolute inset-0 bg-black/50 backdrop-blur-sm"
-            onClick={() => setShowImportDialog(false)}
-          />
-
-          <div className="relative bg-zinc-900 border border-zinc-700 rounded-lg p-6 w-full max-w-md mx-4 shadow-2xl">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-semibold text-white">{t('deck_editor.import_dialog_title')}</h2>
-              <button
-                onClick={() => setShowImportDialog(false)}
-                className="p-2 text-zinc-400 hover:text-white transition-colors"
-              >
-                <Icon icon="mdi:close" className="text-xl" />
-              </button>
-            </div>
-
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-zinc-300 mb-2">
-                  {t('deck_editor.import_deck_code_label')}
-                </label>
-                <textarea
-                  value={importCode}
-                  onChange={(e) => setImportCode(e.target.value)}
-                  placeholder={t('deck_editor.import_deck_code_placeholder')}
-                  className="w-full h-32 px-3 py-2 bg-zinc-800 border border-zinc-600 rounded-lg text-white placeholder-zinc-400 resize-none focus:outline-none focus:ring-2 focus:ring-green-500"
-                />
-              </div>
-
-              <div className="flex items-center justify-center">
-                <div className="flex items-center gap-2 text-zinc-400 text-sm">
-                  <div className="h-px bg-zinc-600 flex-1"></div>
-                  <span>{t('deck_editor.import_or')}</span>
-                  <div className="h-px bg-zinc-600 flex-1"></div>
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-zinc-300 mb-2">
-                  {t('deck_editor.import_ydk_label')}
-                </label>
-                <div className="flex items-center gap-3">
-                  <input
-                    type="file"
-                    accept=".ydk"
-                    onChange={handleYDKFileUpload}
-                    className="hidden"
-                    id="ydk-file-input"
-                  />
-                  <label
-                    htmlFor="ydk-file-input"
-                    className="flex-1 px-4 py-2 bg-zinc-700 hover:bg-zinc-600 border border-zinc-600 rounded-lg text-white cursor-pointer transition-colors flex items-center justify-center gap-2"
-                  >
-                    <Icon icon="mdi:file-upload" />
-                    {t('deck_editor.import_ydk_button')}
-                  </label>
-                </div>
-                <p className="text-xs text-zinc-500 mt-1">
-                  {t('deck_editor.import_ydk_hint')}
-                </p>
-              </div>
-
-              <div className="flex gap-3 justify-end">
-                <button
-                  onClick={() => setShowImportDialog(false)}
-                  className="px-4 py-2 text-zinc-400 hover:text-white transition-colors"
-                >
-                  {t('deck_editor.import_cancel')}
-                </button>
-                <button
-                  onClick={handleImportDeck}
-                  disabled={isImporting || !importCode.trim()}
-                  className="px-4 py-2 bg-green-600 hover:bg-green-700 disabled:bg-zinc-600 disabled:cursor-not-allowed text-white rounded-lg transition-colors flex items-center gap-2"
-                >
-                  {isImporting && <Icon icon="mdi:loading" className="animate-spin" />}
-                  {isImporting ? t('deck_editor.importing') : t('deck_editor.import')}
-                </button>
-              </div>
-            </div>
-
-          </div>
-        </div>
-      )}
-
-      {/* Generate Codes Dialog */}
-      {showCodesDialog && generatedCodes && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center">
-          <div
-            className="absolute inset-0 bg-black/50 backdrop-blur-sm"
-            onClick={() => setShowCodesDialog(false)}
-          />
-
-          <div className="relative bg-zinc-900 border border-zinc-700 rounded-lg p-6 w-full max-w-2xl mx-4 shadow-2xl">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-semibold text-white">{t('deck_editor.generated_codes_title')}</h2>
-              <button
-                onClick={() => setShowCodesDialog(false)}
-                className="p-2 text-zinc-400 hover:text-white transition-colors"
-              >
-                <Icon icon="mdi:close" className="text-xl" />
-              </button>
-            </div>
-
-            <div className="space-y-4">
-              {/* YDKE Code */}
-              <div>
-                <label className="block text-sm font-medium text-zinc-300 mb-2">
-                  {t('deck_editor.ydke_code_label')}
-                </label>
-                <div className="relative">
-                  <input
-                    type="text"
-                    value={generatedCodes.ydke}
-                    readOnly
-                    className="w-full bg-zinc-800 border border-zinc-600 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 pr-10"
-                  />
-                  <button
-                    onClick={() => {
-                      navigator.clipboard.writeText(generatedCodes.ydke);
-                      showToast('success', 'YDKE code copied to clipboard!');
-                    }}
-                    className="absolute right-2 top-1/2 transform -translate-y-1/2 p-1 text-zinc-400 hover:text-white transition-colors"
-                    title={t('deck_editor.copy_to_clipboard')}
-                  >
-                    <Icon icon="mdi:content-copy" className="text-lg" />
-                  </button>
-                </div>
-              </div>
-
-              {/* Omega Code */}
-              <div>
-                <label className="block text-sm font-medium text-zinc-300 mb-2">
-                  {t('deck_editor.omega_code_label')}
-                </label>
-                <div className="relative">
-                  <input
-                    type="text"
-                    value={generatedCodes.omega}
-                    readOnly
-                    className="w-full bg-zinc-800 border border-zinc-600 rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 pr-10"
-                  />
-                  <button
-                    onClick={() => {
-                      navigator.clipboard.writeText(generatedCodes.omega);
-                      showToast('success', 'Omega code copied to clipboard!');
-                    }}
-                    className="absolute right-2 top-1/2 transform -translate-y-1/2 p-1 text-zinc-400 hover:text-white transition-colors"
-                    title="Copy to clipboard"
-                  >
-                    <Icon icon="mdi:content-copy" className="text-lg" />
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            <div className="flex justify-end mt-6">
-              <button
-                onClick={() => setShowCodesDialog(false)}
-                className="px-4 py-2 bg-zinc-700 hover:bg-zinc-600 text-white rounded-lg text-sm font-medium transition-colors"
-              >
-                {t('deck_editor.close')}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {toasts.map((toast) => (
-        <Toast
-          key={toast.id}
-          id={toast.id}
-          type={toast.type}
-          title={toast.title}
-          message={toast.message}
-          onClose={() => removeToast(toast.id)}
-        />
       ))}
     </div>
   );
+
+  return (
+    <div className="min-h-screen">
+      <div className="max-w-6xl mx-auto px-4 py-10 space-y-8">
+        <div className="flex flex-col gap-3">
+          <p className="text-zinc-500 text-sm uppercase tracking-[0.2em]">
+            {t("deck_editor.page_label")}
+          </p>
+          <h1 className="text-3xl font-bold text-white">
+            {t("deck_editor.title")}
+          </h1>
+          <p className="text-gray-400 max-w-3xl">{t("deck_editor.subtitle")}</p>
+        </div>
+
+        <section className="bg-zinc-950/80 border border-zinc-900 rounded-2xl p-6 space-y-4">
+          <div className="flex flex-col gap-2">
+            <div className="flex items-center justify-between flex-wrap gap-2">
+              <div>
+                <p className="text-sm font-semibold text-zinc-300">
+                  {t('deck_editor.deck_region.label')}
+                </p>
+                <p className="text-xs text-zinc-500">
+                  {t('deck_editor.deck_region.description')}
+                </p>
+              </div>
+              <span className="text-xs text-zinc-500">
+                {t('deck_editor.deck_region.active', { region: t(`deck_editor.filters.region_${deckRegion.toLowerCase()}`) })}
+              </span>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {regionOptions.map((option) => (
+                <button
+                  key={option.value}
+                  onClick={() => handleDeckRegionChange(option.value)}
+                  className={`px-4 py-2 rounded-lg text-sm font-medium border transition ${
+                    deckRegion === option.value
+                      ? 'bg-white text-black border-white'
+                      : 'border-zinc-800 bg-black text-zinc-300 hover:border-zinc-600'
+                  }`}
+                >
+                  {t(`deck_editor.filters.region_${option.value.toLowerCase()}`)}
+                </button>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        <section className="bg-zinc-950/80 border border-zinc-900 rounded-2xl p-6 space-y-6">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+            <div>
+              <p className="text-sm font-semibold text-zinc-300">
+                {t("deck_editor.builder.title")}
+              </p>
+              <p className="text-sm text-zinc-500">
+                {t("deck_editor.builder.description")}
+              </p>
+            </div>
+            <button
+              onClick={clearDeck}
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-md border border-zinc-700 text-sm text-zinc-200 hover:border-zinc-500"
+            >
+              <Icon icon="mdi:refresh" className="text-lg" />
+              {t("deck_editor.builder.reset_button")}
+            </button>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div className="bg-black/40 border border-zinc-800 rounded-xl p-4">
+              <p className="text-xs uppercase text-zinc-500">
+                {t("deck_editor.builder.section_main")}
+              </p>
+              <p className="text-2xl font-semibold text-white">
+                {deckTotals.main}
+              </p>
+              <p className="text-xs text-zinc-500">
+                {t("deck_editor.limits.main_helper", {
+                  min: MIN_MAIN_DECK,
+                  max: SECTION_LIMITS.main,
+                })}
+              </p>
+            </div>
+            <div className="bg-black/40 border border-zinc-800 rounded-xl p-4">
+              <p className="text-xs uppercase text-zinc-500">
+                {t("deck_editor.builder.section_extra")}
+              </p>
+              <p className="text-2xl font-semibold text-white">
+                {deckTotals.extra}
+              </p>
+              <p className="text-xs text-zinc-500">
+                {t("deck_editor.limits.section_helper", {
+                  max: SECTION_LIMITS.extra,
+                })}
+              </p>
+            </div>
+            <div className="bg-black/40 border border-zinc-800 rounded-xl p-4">
+              <p className="text-xs uppercase text-zinc-500">
+                {t("deck_editor.builder.section_side")}
+              </p>
+              <p className="text-2xl font-semibold text-white">
+                {deckTotals.side}
+              </p>
+              <p className="text-xs text-zinc-500">
+                {t("deck_editor.limits.section_helper", {
+                  max: SECTION_LIMITS.side,
+                })}
+              </p>
+            </div>
+          </div>
+
+          {deckWarnings.length > 0 && (
+            <div className="p-3 rounded-md border border-zinc-800 bg-black/40 text-sm text-zinc-300 space-y-1">
+              {deckWarnings.map((warning, index) => (
+                <p key={`warning-${index}`}>{warning}</p>
+              ))}
+            </div>
+          )}
+
+          {deckRegion === 'Genesys' && (
+            <div className="grid grid-cols-1">
+              <div className="bg-emerald-950/40 border border-emerald-500/30 rounded-xl p-4">
+                <p className="text-xs uppercase tracking-[0.2em] text-emerald-300">
+                  {t('deck_editor.genesys.points_label')}
+                </p>
+                <p className="text-2xl font-semibold text-white">
+                  {t('deck_editor.genesys.points_total', {
+                    used: genesysPointsUsed,
+                    cap: GENESYS_POINTS_CAP,
+                  })}
+                </p>
+                <p className="text-xs text-emerald-200/80">
+                  {t('deck_editor.genesys.points_remaining', {
+                    remaining: genesysPointsRemaining,
+                  })}
+                </p>
+              </div>
+            </div>
+          )}
+
+          <div>
+            <div className="inline-flex flex-wrap gap-2 bg-zinc-900/60 border border-zinc-800 rounded-xl p-1">
+              {(["main", "extra", "side"] as DeckSection[]).map((section) => (
+                <button
+                  key={section}
+                  onClick={() => setActiveDeckTab(section)}
+                  className={`px-4 py-2 rounded-lg text-sm font-medium transition ${
+                    activeDeckTab === section
+                      ? "bg-white text-black"
+                      : "text-zinc-300 hover:text-white"
+                  }`}
+                >
+                  {t(`deck_editor.builder.tab_${section}`)}
+                  <span className="ml-2 text-xs text-zinc-500">
+                    {deckTotals[section]}
+                  </span>
+                </button>
+              ))}
+            </div>
+
+            <div className="mt-4">
+              {deckEntries.length === 0 ? (
+                <div className="p-6 text-center border border-dashed border-zinc-800 rounded-xl text-sm text-zinc-500">
+                  {t("deck_editor.builder.empty_tab")}
+                </div>
+              ) : (
+                <ul className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
+                  {deckEntries.map((entry) => (
+                    <li key={entry.card.id} className="relative group">
+                      <div className="aspect-4/6 overflow-hidden border border-zinc-800 relative">
+                        {renderCardConstraintBadge(entry.card)}
+                        <img
+                          src={`https://ygopro.online/assets/card-images/common/${entry.card.id}.jpg`}
+                          alt={getCardDisplayName(entry.card)}
+                          className="w-full h-full object-cover"
+                          onClick={() => setInspectedCard(entry.card)}
+                          onError={(event) => {
+                            event.currentTarget.src = "/back.webp";
+                          }}
+                        />
+                        <div className="absolute inset-0 flex flex-col justify-end p-2 bg-linear-to-t from-black/80 via-black/30 to-transparent opacity-0 group-hover:opacity-100 transition">
+                          <div className="flex items-center justify-between text-white text-sm font-semibold mb-2">
+                            <span>{entry.count}x</span>
+                            <button
+                              onClick={() =>
+                                updateCardCount(
+                                  entry.card.id,
+                                  activeDeckTab,
+                                  -entry.count
+                                )
+                              }
+                              className="p-1 rounded-full bg-black/60 hover:bg-red-600"
+                              aria-label={t("deck_editor.builder.remove_card")}
+                            >
+                              <Icon icon="mdi:close" />
+                            </button>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <button
+                              onClick={() =>
+                                updateCardCount(
+                                  entry.card.id,
+                                  activeDeckTab,
+                                  -1
+                                )
+                              }
+                              className="flex-1 py-1 rounded-md border border-zinc-500 text-white text-sm"
+                              aria-label={t(
+                                "deck_editor.builder.decrease_card"
+                              )}
+                            >
+                              -
+                            </button>
+                            <button
+                              onClick={() =>
+                                updateCardCount(entry.card.id, activeDeckTab, 1)
+                              }
+                              disabled={entry.count >= 3}
+                              className="flex-1 py-1 rounded-md bg-white text-black text-sm font-semibold disabled:bg-zinc-600 disabled:text-zinc-400"
+                              aria-label={t(
+                                "deck_editor.builder.increase_card"
+                              )}
+                            >
+                              +
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          </div>
+        </section>
+
+        <section className="space-y-6">
+          <div className="bg-zinc-950/60 border border-zinc-900 rounded-2xl p-6 space-y-4">
+            <div className="flex flex-col gap-4 lg:flex-row lg:items-end">
+              <div className="flex-1">
+                <label className="text-sm text-zinc-400">
+                  {t("deck_editor.filters.simple_label")}
+                </label>
+                <div className="flex gap-2 mt-2">
+                  <input
+                    type="text"
+                    value={basicQuery}
+                    onChange={(event) => handleBasicChange(event.target.value)}
+                    placeholder={t("deck_editor.filters.simple_placeholder")}
+                    className="flex-1 px-4 py-2 rounded-lg bg-black border border-zinc-800 text-white placeholder-zinc-500 focus:outline-none focus:border-zinc-600"
+                  />
+                  {basicQuery && (
+                    <button
+                      onClick={handleClearQuery}
+                      className="px-3 py-2 rounded-lg border border-zinc-800 text-zinc-300 hover:text-white"
+                      aria-label={t("deck_editor.filters.clear_input")}
+                    >
+                      <Icon icon="mdi:close" />
+                    </button>
+                  )}
+                </div>
+              </div>
+              <button
+                onClick={() => setIsAdvancedOpen((prev) => !prev)}
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-zinc-800 text-sm text-zinc-200 hover:border-zinc-600"
+              >
+                <Icon icon="mdi:tune" />
+                <span>
+                  {isAdvancedOpen
+                    ? t("deck_editor.filters.hide_advanced")
+                    : t("deck_editor.filters.show_advanced")}
+                </span>
+                {activeAdvancedCount > 0 && (
+                  <span className="ml-1 text-xs text-emerald-300">
+                    {t("deck_editor.filters.advanced_active", {
+                      count: activeAdvancedCount,
+                    })}
+                  </span>
+                )}
+              </button>
+            </div>
+
+            {isAdvancedOpen && (
+              <div className="border-t border-zinc-800 pt-4 space-y-4">
+                <p className="text-sm text-zinc-400">
+                  {t("deck_editor.filters.advanced_description")}
+                </p>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  <div className="space-y-2">
+                    <label className="text-sm text-gray-400">
+                      {t("deck_editor.filters.type_label")}
+                    </label>
+                    <select
+                      value={advancedValues.type}
+                      onChange={(event) =>
+                        handleTypeChange(event.target.value as CardCategory)
+                      }
+                      className="w-full px-4 py-2 bg-black border border-zinc-800 rounded-md text-white focus:outline-none focus:border-zinc-600"
+                    >
+                      <option value="">
+                        {t("deck_editor.filters.any_option")}
+                      </option>
+                      {typeOptions.map((option) => (
+                        <option key={option.value} value={option.value}>
+                          {t(
+                            `deck_editor.filters.type_${option.value.toLowerCase()}`
+                          )}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="text-sm text-gray-400">
+                      {t("deck_editor.filters.advanced_name")}
+                    </label>
+                    <input
+                      type="text"
+                      value={advancedValues.fname}
+                      onChange={(event) =>
+                        handleAdvancedFieldChange("fname", event.target.value)
+                      }
+                      placeholder={t(
+                        "deck_editor.filters.advanced_name_placeholder"
+                      )}
+                      className="w-full px-4 py-2 bg-black border border-zinc-800 rounded-md text-white placeholder-gray-500 focus:outline-none focus:border-zinc-600"
+                    />
+                  </div>
+
+                  <div className="space-y-2 md:col-span-2">
+                    <label className="text-sm text-gray-400">
+                      {t("deck_editor.filters.advanced_desc")}
+                    </label>
+                    <textarea
+                      value={advancedValues.desc}
+                      onChange={(event) =>
+                        handleAdvancedFieldChange("desc", event.target.value)
+                      }
+                      placeholder={t(
+                        "deck_editor.filters.advanced_desc_placeholder"
+                      )}
+                      rows={2}
+                      className="w-full px-4 py-2 bg-black border border-zinc-800 rounded-md text-white placeholder-gray-500 focus:outline-none focus:border-zinc-600"
+                    />
+                  </div>
+
+                  {isSpellTypeSelected && (
+                    <div className="space-y-2">
+                      <label className="text-sm text-gray-400">
+                        {t("deck_editor.filters.spell_subtype")}
+                      </label>
+                      <select
+                        value={advancedValues.spellSubtype}
+                        onChange={(event) =>
+                          handleAdvancedFieldChange(
+                            "spellSubtype",
+                            event.target.value
+                          )
+                        }
+                        className="w-full px-4 py-2 bg-black border border-zinc-800 rounded-md text-white focus:outline-none focus:border-zinc-600"
+                      >
+                        <option value="">
+                          {t("deck_editor.filters.any_option")}
+                        </option>
+                        {spellSubtypeOptions.map((option) => (
+                          <option key={option.value} value={option.value}>
+                            {t(
+                              `deck_editor.filters.spell_subtype_${option.labelKey}`
+                            )}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
+
+                  {isTrapTypeSelected && (
+                    <div className="space-y-2">
+                      <label className="text-sm text-gray-400">
+                        {t("deck_editor.filters.trap_subtype")}
+                      </label>
+                      <select
+                        value={advancedValues.trapSubtype}
+                        onChange={(event) =>
+                          handleAdvancedFieldChange(
+                            "trapSubtype",
+                            event.target.value
+                          )
+                        }
+                        className="w-full px-4 py-2 bg-black border border-zinc-800 rounded-md text-white focus:outline-none focus:border-zinc-600"
+                      >
+                        <option value="">
+                          {t("deck_editor.filters.any_option")}
+                        </option>
+                        {trapSubtypeOptions.map((option) => (
+                          <option key={option.value} value={option.value}>
+                            {t(
+                              `deck_editor.filters.trap_subtype_${option.labelKey}`
+                            )}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
+
+                  {isMonsterTypeSelected && (
+                    <>
+                      <div className="space-y-2">
+                        <label className="text-sm text-gray-400">
+                          {t("deck_editor.filters.attribute_label")}
+                        </label>
+                        <select
+                          value={advancedValues.attribute}
+                          onChange={(event) =>
+                            handleAdvancedFieldChange(
+                              "attribute",
+                              event.target.value
+                            )
+                          }
+                          className="w-full px-4 py-2 bg-black border border-zinc-800 rounded-md text-white focus:outline-none focus:border-zinc-600"
+                        >
+                          <option value="">
+                            {t("deck_editor.filters.any_option")}
+                          </option>
+                          {attributeOptions.map((option) => (
+                            <option key={option.value} value={option.value}>
+                              {option.label}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+
+                      <div className="space-y-2">
+                        <label className="text-sm text-gray-400">
+                          {t("deck_editor.filters.race_label")}
+                        </label>
+                        <input
+                          type="text"
+                          value={advancedValues.race}
+                          onChange={(event) =>
+                            handleAdvancedFieldChange("race", event.target.value)
+                          }
+                          placeholder={t("deck_editor.filters.race_placeholder")}
+                          className="w-full px-4 py-2 bg-black border border-zinc-800 rounded-md text-white placeholder-gray-500 focus:outline-none focus:border-zinc-600"
+                        />
+                      </div>
+
+                      {renderAdvancedNumberInput(
+                        levelMinLabelKey,
+                        "levelMin",
+                        "deck_editor.filters.number_placeholder"
+                      )}
+                      {renderAdvancedNumberInput(
+                        levelMaxLabelKey,
+                        "levelMax",
+                        "deck_editor.filters.number_placeholder"
+                      )}
+                      {renderAdvancedNumberInput(
+                        "deck_editor.filters.atk_min",
+                        "atkMin",
+                        "deck_editor.filters.number_placeholder"
+                      )}
+                      {renderAdvancedNumberInput(
+                        "deck_editor.filters.atk_max",
+                        "atkMax",
+                        "deck_editor.filters.number_placeholder"
+                      )}
+                      {renderAdvancedNumberInput(
+                        "deck_editor.filters.def_min",
+                        "defMin",
+                        "deck_editor.filters.number_placeholder"
+                      )}
+                      {renderAdvancedNumberInput(
+                        "deck_editor.filters.def_max",
+                        "defMax",
+                        "deck_editor.filters.number_placeholder"
+                      )}
+
+                      <div className="space-y-2 md:col-span-2">
+                        <label className="text-sm text-gray-400">
+                          {t("deck_editor.filters.monster_type_label")}
+                        </label>
+                        <p className="text-xs text-zinc-500">
+                          {t("deck_editor.filters.monster_type_hint")}
+                        </p>
+                        <div className="flex flex-wrap gap-2">
+                          {monsterTypeOptions.map((typeLabel) => {
+                            const isSelected = monsterTypesSelected.includes(
+                              typeLabel
+                            );
+                            return (
+                              <button
+                                type="button"
+                                key={typeLabel}
+                                onClick={() =>
+                                  handleMonsterTypeToggle(typeLabel)
+                                }
+                                className={`px-3 py-1 rounded-full text-sm border transition ${
+                                  isSelected
+                                    ? "bg-white text-black border-white"
+                                    : "border-zinc-700 text-zinc-300 hover:text-white"
+                                }`}
+                              >
+                                {typeLabel}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+
+                      {hasPendulumSelected && (
+                        <div className="space-y-2">
+                          <label className="text-sm text-gray-400">
+                            {t("deck_editor.filters.pendulum_scale")}
+                          </label>
+                          <input
+                            type="number"
+                            value={advancedValues.pScale}
+                            onChange={(event) =>
+                              handleAdvancedFieldChange("pScale", event.target.value)
+                            }
+                            placeholder={t(
+                              "deck_editor.filters.number_placeholder"
+                            )}
+                            className="w-full px-4 py-2 bg-black border border-zinc-800 rounded-md text-white placeholder-gray-500 focus:outline-none focus:border-zinc-600"
+                          />
+                        </div>
+                      )}
+                    </>
+                  )}
+                </div>
+
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    onClick={handleAdvancedApply}
+                    className="px-4 py-2 rounded-lg bg-white text-black text-sm font-semibold"
+                  >
+                    {t("deck_editor.filters.apply")}
+                  </button>
+                  <button
+                    onClick={handleAdvancedReset}
+                    className="px-4 py-2 rounded-lg border border-zinc-700 text-sm text-zinc-200"
+                  >
+                    {t("deck_editor.filters.reset")}
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+
+          <div className="space-y-4">
+            <div className="flex flex-col gap-2">
+              <div className="flex items-center gap-2 text-zinc-400">
+                <Icon icon="mdi:cards-outline" />
+                <span>{t("deck_editor.results.title")}</span>
+              </div>
+              <div className="flex flex-wrap gap-4 text-sm text-zinc-500">
+                <span>
+                  {t("deck_editor.results.total", { count: totalResults })}
+                </span>
+                {totalPages > 1 && (
+                  <span>
+                    {t("deck_editor.results.pagination", { page: Math.min(currentPage, totalPages), totalPages })}
+                  </span>
+                )}
+              </div>
+            </div>
+
+            {isLoading ? (
+              renderSkeletonGrid()
+            ) : filteredCards.length === 0 ? (
+              <div className="text-center text-gray-500 border border-dashed border-zinc-800 rounded-2xl py-12">
+                <p className="text-lg text-gray-300">
+                  {t("deck_editor.results.empty_title")}
+                </p>
+                <p className="text-sm text-gray-500">
+                  {t("deck_editor.results.empty_subtitle")}
+                </p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
+                {paginatedCards.map((card) => (
+                  <article key={card.id} className="space-y-2">
+                    <div className="relative aspect-4/6 rounded-xl overflow-hidden border border-zinc-900">
+                      {renderCardConstraintBadge(card)}
+                      <img
+                        src={`https://ygopro.online/assets/card-images/common/${card.id}.jpg`}
+                        alt={
+                          card.name_en ||
+                          card.name_pt ||
+                          t("deck_editor.results.unnamed_card", { id: card.id })
+                        }
+                        className="w-full h-full object-cover cursor-pointer"
+                        onClick={() => setInspectedCard(card)}
+                        onError={(event) => {
+                          event.currentTarget.src = "/back.webp";
+                        }}
+                      />
+                      <button
+                        className="absolute top-2 right-2 p-2 rounded-full bg-black/70 text-white"
+                        onClick={() => setInspectedCard(card)}
+                        aria-label={t("deck_editor.results.title")}
+                      >
+                        <Icon icon="mdi:eye" />
+                      </button>
+                    </div>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => addCardToSection(card)}
+                        className="flex-1 px-3 py-2 rounded-lg bg-white text-black text-sm font-semibold transition-colors hover:bg-zinc-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-white/70"
+                      >
+                        {isExtraDeckCard(card)
+                          ? t("deck_editor.results.add_to_extra")
+                          : t("deck_editor.results.add_to_main")}
+                      </button>
+                      <button
+                        onClick={() => addCardToSection(card, "side")}
+                        className="px-3 py-2 rounded-lg border border-zinc-800 text-sm text-zinc-200 bg-zinc-900/50 transition-colors hover:border-zinc-600 hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-zinc-500"
+                      >
+                        {t("deck_editor.results.add_to_side")}
+                      </button>
+                    </div>
+                  </article>
+                ))}
+              </div>
+            )}
+
+            {totalResults > 0 && (
+              <div className="flex items-center justify-center gap-3 pt-2">
+                <button
+                  onClick={() => handlePageChange(-1, totalPages)}
+                  disabled={currentPage === 1}
+                  className="px-4 py-2 border border-zinc-700 text-zinc-200 rounded-md disabled:opacity-40"
+                >
+                  {t("common.previous")}
+                </button>
+                <span className="text-sm text-zinc-400">
+                  {t("deck_editor.results.pagination", { page: Math.min(currentPage, totalPages), totalPages })}
+                </span>
+                <button
+                  onClick={() => handlePageChange(1, totalPages)}
+                  disabled={currentPage === totalPages}
+                  className="px-4 py-2 border border-zinc-700 text-zinc-200 rounded-md disabled:opacity-40"
+                >
+                  {t("common.next")}
+                </button>
+              </div>
+            )}
+          </div>
+        </section>
+        {inspectedCard && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4">
+            <div className="max-w-4xl w-full bg-zinc-950 border border-zinc-800 rounded-2xl overflow-hidden">
+              <div className="flex flex-col md:flex-row">
+                <div className="md:w-1/2 bg-black">
+                  <img
+                    src={`https://ygopro.online/assets/card-images/common/${inspectedCard.id}.jpg`}
+                    alt={
+                      getCardDisplayName(inspectedCard)
+                    }
+                    className="w-full h-full object-cover"
+                    onError={(event) => {
+                      event.currentTarget.src = "/back.webp";
+                    }}
+                  />
+                </div>
+                <div className="md:w-1/2 p-6 space-y-4">
+                  <div className="flex items-start justify-between gap-4">
+                    <div>
+                      <h2 className="text-2xl font-bold text-white">
+                        {getCardDisplayName(inspectedCard)}
+                      </h2>
+                      {inspectedCard.type_primary && (
+                        <p className="text-sm text-zinc-400">
+                          {t('deck_editor.results.card_type', {
+                            value: inspectedCard.type_primary,
+                          })}
+                        </p>
+                      )}
+                    </div>
+                    <button
+                      onClick={() => setInspectedCard(null)}
+                      className="p-2 rounded-md bg-zinc-900 text-zinc-300 hover:text-white"
+                      aria-label={t("deck_editor.builder.remove_card")}
+                    >
+                      <Icon icon="mdi:close" />
+                    </button>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3 text-sm text-zinc-300">
+                    {inspectedCard.attribute && (
+                      <span>
+                        {t("deck_editor.results.attribute", {
+                          value: inspectedCard.attribute,
+                        })}
+                      </span>
+                    )}
+                    {inspectedCard.race && (
+                      <span>
+                        {t("deck_editor.results.race", {
+                          value: inspectedCard.race,
+                        })}
+                      </span>
+                    )}
+                    {typeof inspectedCard.level === "number" && (
+                      <span>
+                        {t("deck_editor.results.level", {
+                          value: inspectedCard.level,
+                        })}
+                      </span>
+                    )}
+                    {typeof inspectedCard.atk === "number" && (
+                      <span>
+                        {t("deck_editor.results.atk", {
+                          value: inspectedCard.atk,
+                        })}
+                      </span>
+                    )}
+                    {typeof inspectedCard.def === "number" && (
+                      <span>
+                        {t("deck_editor.results.def", {
+                          value: inspectedCard.def,
+                        })}
+                      </span>
+                    )}
+                  </div>
+                  {(() => {
+                    const localizedDescription = getCardDescription(inspectedCard);
+                    if (!localizedDescription) return null;
+                    return (
+                      <div className="space-y-2">
+                        <p className="text-xs uppercase tracking-wide text-zinc-500">
+                          {t('deck_editor.results.description')}
+                        </p>
+                        <p className="text-sm text-zinc-400 whitespace-pre-line max-h-56 overflow-auto">
+                          {localizedDescription}
+                        </p>
+                      </div>
+                    );
+                  })()}
+                  <div className="flex flex-wrap gap-2">
+                    <button
+                      onClick={() => {
+                        addCardToSection(inspectedCard);
+                        setInspectedCard(null);
+                      }}
+                      className="px-4 py-2 rounded-lg bg-white text-black text-sm font-semibold transition-colors hover:bg-zinc-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-white/70"
+                    >
+                      {isExtraDeckCard(inspectedCard)
+                        ? t("deck_editor.results.add_to_extra")
+                        : t("deck_editor.results.add_to_main")}
+                    </button>
+                    <button
+                      onClick={() => {
+                        addCardToSection(inspectedCard, "side");
+                        setInspectedCard(null);
+                      }}
+                      className="px-4 py-2 rounded-lg border border-zinc-700 text-sm text-zinc-200 bg-zinc-900/50 transition-colors hover:border-zinc-500 hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-zinc-500"
+                    >
+                      {t("deck_editor.results.add_to_side")}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
 };
+
 export default DeckEditor;

@@ -102,14 +102,28 @@ export interface UpdateStatsResponse {
   };
 }
 
-export interface LoginData {
-  LogDate: string;
-  LogCount: number;
+// Top Players API Types
+export interface TopPlayerArchetype {
+  name: string;
+  count: number;
+  percentage: number;
+  ids: number[];
 }
 
-export interface LastLoginsResponse {
+export interface TopPlayerDeck {
+  primaryArchetype: string;
+  archetypes: TopPlayerArchetype[];
+  qty: number;
+}
+
+export interface TopPlayersData {
+  decks: TopPlayerDeck[];
+  region: number;
+  totalPlayers: number;
+  uniqueDecks: number;
+}
+
+export interface TopPlayersResponse {
   success: boolean;
-  data: {
-    logins: LoginData[];
-  };
+  data: TopPlayersData;
 }

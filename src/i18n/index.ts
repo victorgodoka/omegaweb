@@ -2,10 +2,16 @@ import i18n from 'i18next';
 import { initReactI18next } from 'react-i18next';
 import en from './locales/en.json';
 import pt from './locales/pt.json';
+import de from './locales/de.json';
+import fr from './locales/fr.json';
+import es from './locales/es.json';
 
 const resources = {
   'en-US': { translation: en },
   'pt-BR': { translation: pt },
+  'de-DE': { translation: de },
+  'fr-FR': { translation: fr },
+  'es-ES': { translation: es },
 };
 
 // Initialize synchronously to prevent production build issues

@@ -1,8 +1,9 @@
 import React, { useState, useMemo, useCallback } from 'react';
 import { Icon } from '@iconify/react';
 import type { CardSelectorProps, CardGroup } from '../types';
-import type { Cards } from '../../PDFGenerator/types';
 import { useTranslation } from 'react-i18next';
+import { isWhatType, type CardWithQuantity } from '@/utils/Functions';
+import type { Card } from '@/utils/ApiTypes';
 
 const CardSelector: React.FC<CardSelectorProps> = ({
   cards,
@@ -25,7 +26,7 @@ const CardSelector: React.FC<CardSelectorProps> = ({
 
   // Get unique cards for reference (used for calculations)
   const uniqueCards = useMemo(() => {
-    const uniqueMap = new Map<number, Cards & { location: 'main' | 'extra' | 'side' }>();
+    const uniqueMap = new Map<number, CardWithQuantity & { location: 'main' | 'extra' | 'side' }>();
     cards.forEach(card => {
       if (!uniqueMap.has(card.id)) {
         uniqueMap.set(card.id, card);
@@ -33,9 +34,6 @@ const CardSelector: React.FC<CardSelectorProps> = ({
     });
     return Array.from(uniqueMap.values());
   }, [cards]);
-
-  // Helper: is monster (main-deck) card
-  const isMonster = useCallback((card: Cards) => !card.isSpell && !card.isTrap, []);
 
   // Handle searcher card selection for current group (by instance ID)
   const toggleSearcherSelection = (instanceId: string) => {
@@ -79,9 +77,9 @@ const CardSelector: React.FC<CardSelectorProps> = ({
 
   // Get individual searcher card instances
   const individualSearcherCards = useMemo(() => {
-    const searcherInstances: (Cards & { location: 'main' | 'extra' | 'side'; instanceId: string })[] = [];
+    const searcherInstances: (CardWithQuantity & { location: 'main' | 'extra' | 'side'; instanceId: string })[] = [];
     uniqueCards.forEach(card => {
-      for (let i = 0; i < card.qtd; i++) {
+      for (let i = 0; i < card.qty; i++) {
         searcherInstances.push({
           ...card,
           instanceId: `${card.id}-${i}`
@@ -96,14 +94,14 @@ const CardSelector: React.FC<CardSelectorProps> = ({
     const filtered = individualSearcherCards.filter(card => {
       const cardId = parseInt(card.instanceId.split('-')[0]);
       return canBeSearcher(cardId) && (
-        card.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        card.name_en?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         card.id.toString().includes(searchTerm)
       );
     });
     
     return filtered.sort((a, b) => {
-      const nameA = a.name || `Card ${a.id}`;
-      const nameB = b.name || `Card ${b.id}`;
+      const nameA = a.name_en || t('calculator.selector.list.unnamed_card', { id: a.id });
+      const nameB = b.name_en || t('calculator.selector.list.unnamed_card', { id: b.id });
       return nameA.localeCompare(nameB);
     });
   }, [individualSearcherCards, searchTerm, canBeSearcher]);
@@ -192,19 +190,19 @@ const CardSelector: React.FC<CardSelectorProps> = ({
   };
 
   // Get card display name
-  const getCardName = (card: Cards) => {
-    return card.name || `Card ${card.id}`;
+  const getCardName = (card: CardWithQuantity) => {
+    return card.name_en || t('calculator.selector.list.unnamed_card', { id: card.id });
   };
 
   // Unique monster cards only for target selection list
   const uniqueMonsterCards = useMemo(() => {
-    return uniqueCards.filter(isMonster);
-  }, [uniqueCards, isMonster]);
+    return uniqueCards.filter(c => isWhatType(c, "Monster"));
+  }, [uniqueCards]);
 
   // Filter and sort UNIQUE monster cards based on search term
   const filteredUniqueMonsterCards = useMemo(() => {
     const filtered = uniqueMonsterCards.filter(card => 
-      (card.name || `Card ${card.id}`).toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (card.name_en || t('calculator.selector.list.unnamed_card', { id: card.id })).toLowerCase().includes(searchTerm.toLowerCase()) ||
       card.id.toString().includes(searchTerm)
     );
     return filtered.sort((a, b) => (getCardName(a)).localeCompare(getCardName(b)));
@@ -257,14 +255,14 @@ const CardSelector: React.FC<CardSelectorProps> = ({
     return null;
   };
 
-  const addOneCopy = (card: Cards) => {
-    const instanceId = findNextAvailableInstanceId(card.id, card.qtd);
+  const addOneCopy = (card: CardWithQuantity) => {
+    const instanceId = findNextAvailableInstanceId(card.id, card.qty);
     if (instanceId) {
       setSelectedCards(prev => [...prev, instanceId]);
     }
   };
 
-  const removeOneCopy = (card: Cards) => {
+  const removeOneCopy = (card: Card | CardWithQuantity) => {
     // Remove the highest-index selected instance for this card id (LIFO)
     const indices = selectedCards
       .filter(id => parseInt(id.split('-')[0]) === card.id)
@@ -282,7 +280,7 @@ const CardSelector: React.FC<CardSelectorProps> = ({
 
   // Get card image URL
   const getCardImageUrl = (cardId: number) => {
-    return `https://images.ygoprodeck.com/images/cards/${cardId}.jpg`;
+    return `https://ygopro.online/assets/card-images/common/${cardId}.jpg`;
   };
 
   return (
@@ -462,7 +460,7 @@ const CardSelector: React.FC<CardSelectorProps> = ({
                   filteredUniqueMonsterCards.map(card => {
                     const selectedCount = getSelectedCountForId(card.id);
                     const usedOverall = getUsedOverallCopiesCount(card.id);
-                    const remaining = Math.max(0, card.qtd - usedOverall - selectedCount);
+                    const remaining = Math.max(0, card.qty - usedOverall - selectedCount);
                     const canAdd = remaining > 0;
                     const canRemove = selectedCount > 0;
                     return (
@@ -471,7 +469,7 @@ const CardSelector: React.FC<CardSelectorProps> = ({
                         className={`flex items-center gap-3 p-3`}
                       >
                         {/* Card Image */}
-                        <div className="w-12 h-16 bg-zinc-700 rounded overflow-hidden flex-shrink-0">
+                        <div className="w-12 h-16 bg-zinc-700 rounded overflow-hidden shrink-0">
                           <img
                             src={getCardImageUrl(card.id)}
                             alt={getCardName(card)}
@@ -490,23 +488,23 @@ const CardSelector: React.FC<CardSelectorProps> = ({
                             <span className="font-medium text-zinc-200 truncate">
                               {getCardName(card)}
                             </span>
-                            <span className="text-xs bg-zinc-600 text-zinc-300 px-2 py-1 rounded-full flex-shrink-0">
-                              x{card.qtd}
+                            <span className="text-xs bg-zinc-600 text-zinc-300 px-2 py-1 rounded-full shrink-0">
+                              x{card.qty}
                             </span>
                           </div>
                           <div className="text-sm text-zinc-400 mt-1">
-                            {t('calculator.selector.id_label')}: {card.id}
+                            {t('calculator.selector.list.id_label')}: {card.id}
                           </div>
                         </div>
 
                         {/* Quantity controls */}
-                        <div className="flex items-center gap-2 flex-shrink-0">
+                        <div className="flex items-center gap-2 shrink-0">
                           <button
                             type="button"
                             onClick={() => removeOneCopy(card)}
                             disabled={!canRemove}
                             className={`w-7 h-7 rounded-full flex items-center justify-center border ${canRemove ? 'border-zinc-500 text-zinc-200 hover:bg-zinc-600/40' : 'border-zinc-700 text-zinc-600 cursor-not-allowed'}`}
-                            title={t('calculator.selector.buttons.remove')}
+                            aria-label={t('calculator.selector.buttons.decrease')}
                           >
                             <Icon icon="mdi:minus" />
                           </button>
@@ -518,7 +516,7 @@ const CardSelector: React.FC<CardSelectorProps> = ({
                             onClick={() => addOneCopy(card)}
                             disabled={!canAdd}
                             className={`w-7 h-7 rounded-full flex items-center justify-center border ${canAdd ? 'border-zinc-500 text-zinc-200 hover:bg-zinc-600/40' : 'border-zinc-700 text-zinc-600 cursor-not-allowed'}`}
-                            title={t('calculator.selector.buttons.add')}
+                            aria-label={t('calculator.selector.buttons.increase')}
                           >
                             <Icon icon="mdi:plus" />
                           </button>
@@ -565,7 +563,7 @@ const CardSelector: React.FC<CardSelectorProps> = ({
                           onClick={() => isAvailable && toggleSearcherSelection(card.instanceId)}
                         >
                           {/* Card Image */}
-                          <div className="w-12 h-16 bg-zinc-700 rounded overflow-hidden flex-shrink-0">
+                          <div className="w-12 h-16 bg-zinc-700 rounded overflow-hidden shrink-0">
                             <img
                               src={getCardImageUrl(card.id)}
                               alt={getCardName(card)}
@@ -584,12 +582,12 @@ const CardSelector: React.FC<CardSelectorProps> = ({
                               <span className="font-medium text-zinc-200 truncate">
                                 {getCardName(card)}
                               </span>
-                              <span className="text-xs bg-zinc-600 text-zinc-300 px-2 py-1 rounded-full flex-shrink-0">
-                                {t('calculator.selector.copy_badge', { index: instanceIndex })}
+                              <span className="text-xs bg-zinc-600 text-zinc-300 px-2 py-1 rounded-full shrink-0">
+                                {t('calculator.selector.list.copy_badge', { index: instanceIndex })}
                               </span>
                             </div>
                             <div className="text-sm text-zinc-400 mt-1">
-                              {t('calculator.selector.id_label')}: {card.id}
+                              {t('calculator.selector.list.id_label')}: {card.id}
                               {!isAvailable && (
                                 <span className="text-red-400 ml-2">
                                   {t('calculator.selector.searchers.used_elsewhere')}
@@ -599,7 +597,7 @@ const CardSelector: React.FC<CardSelectorProps> = ({
                           </div>
                           
                           {/* Selection Checkbox */}
-                          <div className={`w-5 h-5 rounded border-2 flex items-center justify-center flex-shrink-0 ${
+                          <div className={`w-5 h-5 rounded border-2 flex items-center justify-center shrink-0 ${
                             isSelected
                               ? 'bg-orange-500 border-orange-500'
                               : 'border-zinc-500'

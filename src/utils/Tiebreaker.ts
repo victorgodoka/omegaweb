@@ -1,10 +1,4 @@
-import type { Player, Round, Table } from "@/pages/Live/types";
-
-interface TournamentData {
-  players: Player[];
-  rounds: Round[];
-  table: Table[];
-}
+import type { TournamentDetail } from "@/pages/History/types";
 
 export interface PlayerStats {
   id: string;
@@ -15,16 +9,16 @@ export interface PlayerStats {
   winPercentage: string;
   draws: number;
   losses: number;
+  rating: number;
   tiebreaker: string;
 }
 
-export function calculateTiebreakers(data: TournamentData): PlayerStats[] {
-  const playerStats = data.players.map(player => {
+export function calculateTiebreakers(data: TournamentDetail): PlayerStats[] {
+  const playerStats = data.users.map(user => {
     // Get match results from table data (already includes BYEs)
-    const tableData = data.table.find(t => t.id === player.id);
-    const wins = tableData?.wins || 0;
-    const draws = tableData?.draws || 0;
-    const losses = tableData?.loses || 0;
+    const wins = user.stats.wins || 0;
+    const draws = user.stats.draws || 0;
+    const losses = user.stats.loses || 0;
 
     // Get all opponents this player faced and track lost rounds
     const opponents: string[] = [];
@@ -32,19 +26,19 @@ export function calculateTiebreakers(data: TournamentData): PlayerStats[] {
 
     data.rounds.forEach((round, roundIndex) => {
       // Skip BYE rounds (no opponent to track)
-      if (round.bye === player.id) {
+      if (round.bye === user.user_id) {
         return;
       }
 
       // Check each room in the round
-      round.rooms.forEach(room => {
-        if (room.duelist1 === player.id) {
+      round.duels.forEach(room => {
+        if (room.duelist1 === user.user_id) {
           opponents.push(room.duelist2);
-          // Check if this player lost (result 0 means duelist1 lost)
+          // Check if this user lost (result 0 means duelist1 lost)
           if (room.result === 0) {
             lostRounds.push(roundIndex + 1); // Round numbers are 1-indexed
           }
-        } else if (room.duelist2 === player.id) {
+        } else if (room.duelist2 === user.user_id) {
           opponents.push(room.duelist1);
           // Check if this player lost (result 1 means duelist2 lost)
           if (room.result === 1) {
@@ -53,9 +47,6 @@ export function calculateTiebreakers(data: TournamentData): PlayerStats[] {
         }
       });
     });
-
-    // Calculate total match points (AA): Win = 3, Draw = 1, Loss = 0
-    const totalPoints = (wins * 3) + (draws * 1);
 
     // Calculate opponent's match-win percentage (BBB)
     let totalOpponentWinPercentage = 0;
@@ -82,7 +73,7 @@ export function calculateTiebreakers(data: TournamentData): PlayerStats[] {
 
     // Format tiebreaker: AABBBCCCDDD (exactly 11 digits)
     // AA: Always 2 digits (00-99, cap at 99)
-    const AA = Math.min(totalPoints, 99).toString().padStart(2, '0');
+    const AA = Math.min(user.stats.rating, 99).toString().padStart(2, '0');
     
     // BBB: Convert percentage to tenths and cap at 999 (e.g., 72.6% becomes 726, max 999)
     const BBB = Math.min(Math.round(totalOpponentWinPercentage * 10), 999).toString().padStart(3, '0');
@@ -100,10 +91,11 @@ export function calculateTiebreakers(data: TournamentData): PlayerStats[] {
     const winPercentage = totalMatches > 0 ? ((wins / totalMatches) * 100).toFixed(2) : "0.00";
 
     return {
-      id: player.id,
-      username: player.username,
-      displayname: player.displayname,
-      avatar: player.avatar,
+      id: user.user_id,
+      username: user.username,
+      displayname: user.displayname,
+      avatar: user.avatar,
+      rating: user.stats.rating,
       wins,
       draws,
       losses,
@@ -120,8 +112,8 @@ export function calculateTiebreakers(data: TournamentData): PlayerStats[] {
   });
 }
 
-function calculatePlayerWinPercentage(playerId: string, data: TournamentData): number {
-  const tableData = data.table.find(t => t.id === playerId);
+function calculatePlayerWinPercentage(playerId: string, data: TournamentDetail): number {
+  const tableData = data.users.find(t => t.user_id === playerId)?.stats;
   if (!tableData) return 0;
 
   const wins = tableData.wins || 0;
@@ -134,7 +126,7 @@ function calculatePlayerWinPercentage(playerId: string, data: TournamentData): n
   return (wins / totalMatches) * 100;
 }
 
-function calculateOpponentOpponentWinPercentage(playerId: string, data: TournamentData): number {
+function calculateOpponentOpponentWinPercentage(playerId: string, data: TournamentDetail): number {
   // Get all opponents this player faced
   const opponents: string[] = [];
 
@@ -144,7 +136,7 @@ function calculateOpponentOpponentWinPercentage(playerId: string, data: Tourname
       return;
     }
 
-    round.rooms.forEach(room => {
+    round.duels.forEach(room => {
       if (room.duelist1 === playerId) {
         opponents.push(room.duelist2);
       } else if (room.duelist2 === playerId) {
@@ -169,7 +161,7 @@ function calculateOpponentOpponentWinPercentage(playerId: string, data: Tourname
         return;
       }
 
-      round.rooms.forEach(room => {
+      round.duels.forEach(room => {
         if (room.duelist1 === opponentId) {
           opponentOpponents.push(room.duelist2);
         } else if (room.duelist2 === opponentId) {
@@ -188,5 +180,3 @@ function calculateOpponentOpponentWinPercentage(playerId: string, data: Tourname
 
   return totalOpponentOpponents > 0 ? totalOpponentOpponentWinPercentage / totalOpponentOpponents : 0;
 }
-
-

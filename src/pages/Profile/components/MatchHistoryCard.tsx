@@ -108,7 +108,7 @@ const MatchHistoryCard: React.FC<MatchHistoryCardProps> = ({ match, formatMatchD
                   title={card.name}
                 >
                   <img
-                    src={`https://images.ygoprodeck.com/images/cards_cropped/${card.id}.jpg`}
+                    src={`https://ygopro.online/assets/card-arts/${card.id}.jpg`}
                     alt={card.name}
                     className="w-full h-full object-cover"
                     loading="lazy"
@@ -152,7 +152,7 @@ const MatchHistoryCard: React.FC<MatchHistoryCardProps> = ({ match, formatMatchD
                   title={card.name}
                 >
                   <img
-                    src={`https://images.ygoprodeck.com/images/cards_cropped/${card.id}.jpg`}
+                    src={`https://ygopro.online/assets/card-arts/${card.id}.jpg`}
                     alt={card.name}
                     className="w-full h-full object-cover"
                     loading="lazy"

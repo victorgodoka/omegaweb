@@ -1,4 +1,5 @@
-import type { Cards } from '../PDFGenerator/types';
+import type { Card } from '@/utils/ApiTypes';
+import type { CardWithQuantity } from '@/utils/Functions';
 
 export interface CardGroup {
   name: string;
@@ -20,6 +21,7 @@ export interface CalculatorState {
   isSharing: boolean;
   // When true, auto-run calculations once shared data is loaded
   autoCalculate?: boolean;
+  cards: Card[]
 }
 
 export interface ProbabilityResult {
@@ -40,7 +42,7 @@ export interface ProbabilityResult {
 }
 
 export interface CardSelectorProps {
-  cards: (Cards & { location: 'main' | 'extra' | 'side' })[];
+  cards: (CardWithQuantity & { location: 'main' | 'extra' | 'side' })[];
   targetCards: CardGroup[];
   onAddTargetGroup: (group: CardGroup) => void;
   onRemoveTargetGroup: (index: number) => void;

@@ -38,7 +38,7 @@ const HypergeometricModal: React.FC<HypergeometricModalProps> = ({
         {/* Introduction */}
         <div className="bg-blue-900/30 border border-blue-500/30 rounded-lg p-4">
           <div className="flex items-start gap-3">
-            <Icon icon="mdi:lightbulb" className="text-blue-400 text-xl flex-shrink-0 mt-0.5" />
+            <Icon icon="mdi:lightbulb" className="text-blue-400 text-xl shrink-0 mt-0.5" />
             <div>
               <h3 className="text-blue-400 font-semibold mb-2">{t('calculator.modal.intro.title')}</h3>
               <p className="text-sm leading-relaxed">{t('calculator.modal.intro.text')}</p>
@@ -245,19 +245,19 @@ const HypergeometricModal: React.FC<HypergeometricModalProps> = ({
           </h3>
           <ul className="text-sm space-y-2">
             <li className="flex items-start gap-2">
-              <Icon icon="mdi:check" className="text-green-400 flex-shrink-0 mt-0.5" />
+              <Icon icon="mdi:check" className="text-green-400 shrink-0 mt-0.5" />
               <span>{t('calculator.modal.tips.item1')}</span>
             </li>
             <li className="flex items-start gap-2">
-              <Icon icon="mdi:check" className="text-green-400 flex-shrink-0 mt-0.5" />
+              <Icon icon="mdi:check" className="text-green-400 shrink-0 mt-0.5" />
               <span>{t('calculator.modal.tips.item2')}</span>
             </li>
             <li className="flex items-start gap-2">
-              <Icon icon="mdi:check" className="text-green-400 flex-shrink-0 mt-0.5" />
+              <Icon icon="mdi:check" className="text-green-400 shrink-0 mt-0.5" />
               <span>{t('calculator.modal.tips.item3')}</span>
             </li>
             <li className="flex items-start gap-2">
-              <Icon icon="mdi:check" className="text-green-400 flex-shrink-0 mt-0.5" />
+              <Icon icon="mdi:check" className="text-green-400 shrink-0 mt-0.5" />
               <span>{t('calculator.modal.tips.item4')}</span>
             </li>
           </ul>

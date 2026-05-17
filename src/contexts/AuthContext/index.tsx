@@ -55,12 +55,16 @@ export const AuthProvider: FC<{ children: ReactNode }> = ({ children }) => {
 
   useEffect(() => {
     try {
-      localStorage.setItem('user', JSON.stringify(user));
+      if (user.id === '0') {
+        localStorage.removeItem('user');
+      } else {
+        localStorage.setItem('user', JSON.stringify(user));
+      }
     } catch (error) {
       console.error('Erro ao salvar usuário no localStorage:', error);
       setError('Erro ao salvar dados do usuário.');
     }
-    setIsLoading(false); 
+    setIsLoading(false);
   }, [user]);
 
   return (

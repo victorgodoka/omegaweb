@@ -1,4 +1,4 @@
-import { Spinner } from "flowbite-react";
+import { Spinner } from "@/ui/Spinner";
 import { useTranslation } from "react-i18next";
 
 const Loading = () => {

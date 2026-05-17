@@ -1,130 +1,151 @@
-import React, { useState, useEffect } from 'react';
-import type { PastTournaments, Tournament } from './types';
+import { useState, useEffect } from 'react';
 import { Link } from 'react-router';
 import { useTranslation } from 'react-i18next';
+import { Icon } from '@iconify/react';
+import { api } from '@/utils/Api';
+import type { Tournament } from './types';
 
-const History: React.FC = () => {
+const History = () => {
+  const { t, i18n } = useTranslation();
   const [tournaments, setTournaments] = useState<Tournament[]>([]);
-  const [filteredTournaments, setFilteredTournaments] = useState<Tournament[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
   const [totalTournaments, setTotalTournaments] = useState(0);
-  const [availableBanlists, setAvailableBanlists] = useState<string[]>([]);
-  const [selectedBanlist, setSelectedBanlist] = useState<string>('');
-  const [dateFrom, setDateFrom] = useState<string>('');
-  const [dateTo, setDateTo] = useState<string>('');
-  const tournamentsPerPage = 50;
-
-  const { t, i18n } = useTranslation();
+  const [limit] = useState(20);
 
   useEffect(() => {
-    const fetchTournaments = async () => {
-      try {
-        setLoading(true);
-        setError(null);
+    fetchTournaments(currentPage);
+  }, [currentPage]);
 
-        const response = await fetch(import.meta.env.VITE_API_URL + '/tournaments');
-        
-        if (!response.ok) {
-          throw new Error(t('history.error_loading'));
-        }
+  const fetchTournaments = async (page: number) => {
+    try {
+      setLoading(true);
+      setError(null);
 
-        const data: PastTournaments = await response.json();
-        
-        if (!data.success) {
-          throw new Error(t('history.api_unsuccessful'));
-        }
+      const response = await api.main.getTournaments(page, limit);
 
-        setTournaments(data.data);
-        setFilteredTournaments(data.data);
-        setTotalTournaments(data.data.length);
-        
-        // Extract unique banlists
-        const banlists = [...new Set(data.data.map(tournament => tournament.banlist))];
-        setAvailableBanlists(banlists);
-      } catch (err) {
-        setError(err instanceof Error ? err.message : t('common.network_error'));
-      } finally {
-        setLoading(false);
+      if (!response.ok || !response.data) {
+        throw new Error(t('history.error_loading'));
       }
-    };
 
-    fetchTournaments();
-  }, []);
+      const data = response.data;
 
-  // Filter tournaments based on criteria
-  useEffect(() => {
-    let filtered = tournaments;
+      if (!data.success) {
+        throw new Error(t('history.api_unsuccessful'));
+      }
 
-    // Filter by banlist
-    if (selectedBanlist) {
-      filtered = filtered.filter(tournament => tournament.banlist === selectedBanlist);
+      setTournaments(data.data.tournaments);
+      setTotalPages(data.data.pagination.totalPages);
+      setTotalTournaments(data.data.pagination.totalTournaments);
+      setCurrentPage(data.data.pagination.currentPage);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : t('common.network_error'));
+    } finally {
+      setLoading(false);
     }
-
-    // Filter by date range
-    if (dateFrom) {
-      filtered = filtered.filter(tournament => new Date(tournament.starttime) >= new Date(dateFrom));
-    }
-    if (dateTo) {
-      filtered = filtered.filter(tournament => new Date(tournament.starttime) <= new Date(dateTo));
-    }
-
-    setFilteredTournaments(filtered);
-    setTotalTournaments(filtered.length);
-    setCurrentPage(1); // Reset to first page when filters change
-  }, [tournaments, selectedBanlist, dateFrom, dateTo]);
+  };
 
   const formatDate = (dateString: string): string => {
     const date = new Date(dateString);
-    return date.toLocaleDateString(i18n.language, {
+    const lang = i18n.language || 'en-US';
+    const locale = lang.startsWith('pt') ? 'pt-BR' : 'en-US';
+    return date.toLocaleDateString(locale, {
       year: 'numeric',
       month: 'short',
       day: 'numeric',
       hour: '2-digit',
-      minute: '2-digit'
+      minute: '2-digit',
     });
   };
-
-  const getCurrentPageTournaments = (): Tournament[] => {
-    const startIndex = (currentPage - 1) * tournamentsPerPage;
-    const endIndex = startIndex + tournamentsPerPage;
-    return filteredTournaments.slice(startIndex, endIndex);
-  };
-
-  const totalPages = Math.ceil(totalTournaments / tournamentsPerPage);
 
   const handlePageChange = (page: number) => {
     setCurrentPage(page);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  const SkeletonCard = () => (
-    <div className="bg-zinc-800 rounded-lg border border-zinc-700 p-6 mt-12 animate-pulse">
-      <div className="space-y-3">
-        <div className="h-6 bg-zinc-700 rounded w-3/4"></div>
-        <div className="h-4 bg-zinc-700 rounded w-1/2"></div>
-        <div className="flex space-x-4">
-          <div className="h-4 bg-zinc-700 rounded w-20"></div>
-          <div className="h-4 bg-zinc-700 rounded w-16"></div>
+  const TournamentCard = ({ tournament }: { tournament: Tournament }) => (
+    <Link
+      to={`/tournament/${tournament.id}`}
+      className="block bg-zinc-900/50 border border-zinc-800 rounded-lg p-5 hover:border-zinc-700 transition-all group"
+    >
+      {/* Header */}
+      <div className="flex items-start justify-between mb-4">
+        <div className="flex items-center gap-3">
+          <div className="w-12 h-12 bg-zinc-800 rounded-lg flex items-center justify-center border border-zinc-700">
+            <Icon icon="mdi:tournament" className="w-6 h-6 text-zinc-400" />
+          </div>
+          <div>
+            <h3 className="text-white font-semibold text-lg group-hover:text-zinc-300 transition-colors">
+              {t('history.tournament_number', { id: tournament.id })}
+            </h3>
+            <p className="text-zinc-500 text-sm">
+              {tournament.phases} {t('history.phases')}
+            </p>
+          </div>
         </div>
-        <div className="h-4 bg-zinc-700 rounded w-1/3"></div>
-        <div className="h-10 bg-zinc-700 rounded w-full mt-4"></div>
+        {tournament.endtime && (
+          <span className="px-2 py-1 bg-zinc-800 text-zinc-400 text-xs rounded border border-zinc-700">
+            {t('history.completed')}
+          </span>
+        )}
+      </div>
+
+      {/* Info Grid */}
+      <div className="grid grid-cols-2 gap-3 mb-4">
+        <div className="flex items-center gap-2 text-sm">
+          <Icon icon="mdi:calendar" className="w-4 h-4 text-zinc-500" />
+          <span className="text-zinc-400">{formatDate(tournament.starttime)}</span>
+        </div>
+        <div className="flex items-center gap-2 text-sm">
+          <Icon icon="mdi:account-group" className="w-4 h-4 text-zinc-500" />
+          <span className="text-zinc-400">
+            {tournament.players} {t('history.players_count')}
+          </span>
+        </div>
+        <div className="flex items-center gap-2 text-sm">
+          <Icon icon="mdi:shield-check" className="w-4 h-4 text-zinc-500" />
+          <span className="text-zinc-400">{tournament.banlist}</span>
+        </div>
+        <div className="flex items-center gap-2 text-sm">
+          <Icon icon="mdi:cog" className="w-4 h-4 text-zinc-500" />
+          <span className="text-zinc-400">{tournament.settings}</span>
+        </div>
+      </div>
+
+      {/* Extra Rules */}
+      {tournament.extrarules && (
+        <div className="pt-3 border-t border-zinc-800">
+          <p className="text-zinc-500 text-xs">{tournament.extrarules}</p>
+        </div>
+      )}
+    </Link>
+  );
+
+  const SkeletonCard = () => (
+    <div className="bg-zinc-900/50 border border-zinc-800 rounded-lg p-5 animate-pulse">
+      <div className="flex items-start gap-3 mb-4">
+        <div className="w-12 h-12 bg-zinc-800 rounded-lg"></div>
+        <div className="flex-1">
+          <div className="h-5 bg-zinc-800 rounded w-3/4 mb-2"></div>
+          <div className="h-4 bg-zinc-800 rounded w-1/2"></div>
+        </div>
+      </div>
+      <div className="grid grid-cols-2 gap-3 mb-4">
+        <div className="h-4 bg-zinc-800 rounded"></div>
+        <div className="h-4 bg-zinc-800 rounded"></div>
+        <div className="h-4 bg-zinc-800 rounded"></div>
+        <div className="h-4 bg-zinc-800 rounded"></div>
       </div>
     </div>
   );
 
-  const clearFilters = () => {
-    setSelectedBanlist('');
-    setDateFrom('');
-    setDateTo('');
-  };
-
   const PaginationControls = () => {
     const getPageNumbers = () => {
-      const pages = [];
+      const pages: (number | string)[] = [];
       const maxVisiblePages = 5;
-      
+
       if (totalPages <= maxVisiblePages) {
         for (let i = 1; i <= totalPages; i++) {
           pages.push(i);
@@ -152,45 +173,45 @@ const History: React.FC = () => {
           pages.push(totalPages);
         }
       }
-      
+
       return pages;
     };
 
     return (
-      <div className="flex items-center justify-center space-x-2 mt-8">
+      <div className="flex items-center justify-center gap-2 mt-8">
         <button
           onClick={() => handlePageChange(currentPage - 1)}
           disabled={currentPage === 1}
-          className="px-3 py-2 text-sm font-medium text-zinc-300 bg-zinc-800 border border-zinc-600 rounded-md hover:bg-zinc-700 disabled:opacity-50 disabled:cursor-not-allowed"
+          className="px-3 py-2 text-sm font-medium text-zinc-400 bg-zinc-800 border border-zinc-700 rounded-lg hover:bg-zinc-700 hover:text-white disabled:opacity-50 disabled:cursor-not-allowed transition-all"
         >
-          {t('common.previous')}
+          <Icon icon="mdi:chevron-left" className="w-5 h-5" />
         </button>
-        
+
         {getPageNumbers().map((page, index) => (
-          <React.Fragment key={index}>
+          <div key={index}>
             {page === '...' ? (
-              <span className="px-3 py-2 text-sm text-zinc-500">...</span>
+              <span className="px-3 py-2 text-sm text-zinc-600">...</span>
             ) : (
               <button
                 onClick={() => handlePageChange(page as number)}
-                className={`px-3 py-2 text-sm font-medium rounded-md ${
+                className={`px-3 py-2 text-sm font-medium rounded-lg transition-all ${
                   currentPage === page
-                    ? 'bg-blue-600 text-white'
-                    : 'text-zinc-300 bg-zinc-800 border border-zinc-600 hover:bg-zinc-700'
+                    ? 'bg-white text-black'
+                    : 'text-zinc-400 bg-zinc-800 border border-zinc-700 hover:bg-zinc-700 hover:text-white'
                 }`}
               >
                 {page}
               </button>
             )}
-          </React.Fragment>
+          </div>
         ))}
-        
+
         <button
           onClick={() => handlePageChange(currentPage + 1)}
           disabled={currentPage === totalPages}
-          className="px-3 py-2 text-sm font-medium text-zinc-300 bg-zinc-800 border border-zinc-600 rounded-md hover:bg-zinc-700 disabled:opacity-50 disabled:cursor-not-allowed"
+          className="px-3 py-2 text-sm font-medium text-zinc-400 bg-zinc-800 border border-zinc-700 rounded-lg hover:bg-zinc-700 hover:text-white disabled:opacity-50 disabled:cursor-not-allowed transition-all"
         >
-          {t('common.next')}
+          <Icon icon="mdi:chevron-right" className="w-5 h-5" />
         </button>
       </div>
     );
@@ -198,155 +219,63 @@ const History: React.FC = () => {
 
   if (error) {
     return (
-      <div className="min-h-screen bg-zinc-900 flex items-center justify-center">
+      <div className="min-h-screen bg-black flex items-center justify-center">
         <div className="text-center">
-          <div className="text-red-400 text-xl mb-4">⚠️ {t('error')}</div>
-          <p className="text-zinc-300">{error}</p>
+          <Icon icon="mdi:alert-circle" className="w-16 h-16 text-red-400 mx-auto mb-4" />
+          <h2 className="text-white text-xl mb-2">{t('error')}</h2>
+          <p className="text-zinc-400">{error}</p>
+          <button
+            onClick={() => fetchTournaments(currentPage)}
+            className="mt-4 px-4 py-2 bg-white text-black rounded-lg hover:bg-zinc-200 transition-colors"
+          >
+            {t('common.retry')}
+          </button>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-zinc-900 text-zinc-100 mt-12">
-      <div className="container mx-auto px-4 py-8">
+    <div className="min-h-screen bg-black text-white pt-20 pb-12">
+      <div className="container mx-auto px-4 max-w-7xl">
         {/* Header */}
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-blue-300 mb-2">{t('history.title')}</h1>
+          <div className="flex items-center gap-3 mb-3">
+            <Icon icon="mdi:history" className="w-8 h-8 text-white" />
+            <h1 className="text-3xl font-bold text-white">{t('history.title')}</h1>
+          </div>
           <p className="text-zinc-400">{t('history.subtitle')}</p>
           {!loading && (
             <p className="text-zinc-500 text-sm mt-2">
               {t('history.showing', {
-                from: ((currentPage - 1) * tournamentsPerPage) + 1,
-                to: Math.min(currentPage * tournamentsPerPage, totalTournaments),
-                total: totalTournaments
+                from: (currentPage - 1) * limit + 1,
+                to: Math.min(currentPage * limit, totalTournaments),
+                total: totalTournaments,
               })}
             </p>
           )}
         </div>
 
-        {/* Filters */}
-        <div className="bg-zinc-800 rounded-lg border border-zinc-700 p-6 mb-8">
-          <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4 items-end">
-            <div>
-              <label className="block text-sm font-medium text-zinc-300 mb-2">
-                {t('banlist')}
-              </label>
-              <select
-                value={selectedBanlist}
-                onChange={(e) => setSelectedBanlist(e.target.value)}
-                className="w-full px-3 py-2 bg-zinc-700 border border-zinc-600 rounded-md text-zinc-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              >
-                <option value="">{t('history.all_banlists')}</option>
-                {availableBanlists.map((banlist) => (
-                  <option key={banlist} value={banlist}>
-                    {banlist}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-zinc-300 mb-2">
-                {t('history.from_date')}
-              </label>
-              <input
-                type="date"
-                value={dateFrom}
-                onChange={(e) => setDateFrom(e.target.value)}
-                className="w-full px-3 py-2 bg-zinc-700 border border-zinc-600 rounded-md text-zinc-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-zinc-300 mb-2">
-                {t('history.to_date')}
-              </label>
-              <input
-                type="date"
-                value={dateTo}
-                onChange={(e) => setDateTo(e.target.value)}
-                className="w-full px-3 py-2 bg-zinc-700 border border-zinc-600 rounded-md text-zinc-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              />
-            </div>
-
-            <div>
-              <button
-                onClick={clearFilters}
-                className="w-full px-4 py-2 bg-zinc-600 text-zinc-100 text-sm font-medium rounded-md hover:bg-zinc-500 transition-colors duration-200"
-              >
-                {t('history.clear_filters')}
-              </button>
-            </div>
-          </div>
-        </div>
-
         {/* Tournament Grid */}
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-          {loading ? (
-            Array.from({ length: 12 }).map((_, index) => (
-              <SkeletonCard key={index} />
-            ))
-          ) : (
-            getCurrentPageTournaments().map((tournament) => (
-              <div
-                key={tournament.id}
-                className="bg-zinc-800 rounded-lg border border-zinc-700 p-6 hover:border-blue-400 transition-colors duration-200 flex flex-col"
-              >
-                <h3 className="text-lg font-semibold text-zinc-100 mb-3">
-                  {t('history.tournament_number', { id: tournament.id })}
-                </h3>
-                
-                <div className="flex flex-col space-y-2 text-sm text-zinc-400 mb-4 flex-1">
-                  <span className="flex items-center">
-                    <svg className="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
-                      <path fillRule="evenodd" d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z" clipRule="evenodd" />
-                    </svg>
-                    {formatDate(tournament.starttime)}
-                  </span>
-                  
-                  <span className="flex items-center">
-                    <svg className="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
-                      <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                    {tournament.banlist}
-                  </span>
-                  
-                  <span className="flex items-center">
-                    <svg className="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
-                      <path d="M13 6a3 3 0 11-6 0 3 3 0 016 0zM18 8a2 2 0 11-4 0 2 2 0 014 0zM14 15a4 4 0 00-8 0v3h8v-3z" />
-                    </svg>
-                    {t('history.players', { count: tournament.players })}
-                  </span>
-
-                  {tournament.endtime && (
-                    <div className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-900 text-green-300 border border-green-700 w-fit">
-                      {t('history.completed')}
-                    </div>
-                  )}
-                </div>
-                
-                <Link
-                  to={`/tournament/${tournament.id}`}
-                  className="w-full px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700 transition-colors duration-200 text-center mt-auto"
-                >
-                  {t('history.view_details')}
-                </Link>
-              </div>
-            ))
-          )}
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          {loading
+            ? Array.from({ length: 12 }).map((_, index) => <SkeletonCard key={index} />)
+            : tournaments.map((tournament) => (
+                <TournamentCard key={tournament.id} tournament={tournament} />
+              ))}
         </div>
-
-        {/* Pagination */}
-        {!loading && totalPages > 1 && <PaginationControls />}
 
         {/* Empty State */}
         {!loading && tournaments.length === 0 && (
-          <div className="text-center py-12">
-            <div className="text-zinc-400 text-lg mb-2">{t('history.empty_title')}</div>
-            <p className="text-zinc-500">{t('history.empty_subtitle')}</p>
+          <div className="text-center py-16">
+            <Icon icon="mdi:tournament" className="w-16 h-16 text-zinc-700 mx-auto mb-4" />
+            <h3 className="text-zinc-400 text-lg mb-2">{t('history.empty_title')}</h3>
+            <p className="text-zinc-600">{t('history.empty_subtitle')}</p>
           </div>
         )}
+
+        {/* Pagination */}
+        {!loading && totalPages > 1 && <PaginationControls />}
       </div>
     </div>
   );

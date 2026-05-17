@@ -1,5 +1,5 @@
 import { tcgHref } from "@/utils/Functions"
-import { Popover } from "flowbite-react"
+import { Popover } from "@/ui/Popover"
 import Image from "@/ui/Image"
 
 const CardLink = ({ c }: { c: TournamentDeckData }) =>
